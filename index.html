@@ -3,111 +3,120 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>은하수 관측 확률 계산기 Pro Max (Stable+)</title>
+  <title>은하수 관측 확률 계산기 Pro Max (Stable+ Final)</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
   <style>
     body { margin: 0; padding: 0; overflow: hidden; background: #000; }
     #map { width: 100vw; height: 100vh; }
 
-    #ui-panel {
-      position: absolute; top: 20px; right: 20px; z-index: 1000;
-      background: rgba(30, 30, 30, 0.85); backdrop-filter: blur(10px); color: white;
-      padding: 20px; border-radius: 12px; font-family: sans-serif;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.5); width: 270px; max-height: 90vh; overflow-y: auto;
-      box-sizing: border-box;
+    #ui-panel{
+      position:absolute; top:20px; right:20px; z-index:1000;
+      background:rgba(30,30,30,0.85); backdrop-filter:blur(10px); color:white;
+      padding:20px; border-radius:12px; font-family:sans-serif;
+      box-shadow:0 4px 15px rgba(0,0,0,0.5); width:270px; max-height:90vh; overflow-y:auto;
+      box-sizing:border-box;
     }
-    #ui-panel::-webkit-scrollbar { width: 8px; }
-    #ui-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 4px; }
+    #ui-panel::-webkit-scrollbar{ width:8px; }
+    #ui-panel::-webkit-scrollbar-thumb{ background:rgba(255,255,255,0.3); border-radius:4px; }
 
-    .mobile-handle {
-      display: none; width: 40px; height: 5px; background: rgba(255,255,255,0.4);
-      border-radius: 3px; margin: 0 auto 15px auto; cursor: pointer;
+    .mobile-handle{
+      display:none; width:40px; height:5px; background:rgba(255,255,255,0.4);
+      border-radius:3px; margin:0 auto 15px auto; cursor:pointer;
     }
 
-    .ui-section { margin-bottom: 15px; }
-    .ui-section:last-child { margin-bottom: 0; }
-    .ui-title { font-size: 14px; font-weight: bold; margin-bottom: 8px; color: #aaa; }
+    .ui-section{ margin-bottom:15px; }
+    .ui-section:last-child{ margin-bottom:0; }
+    .ui-title{ font-size:14px; font-weight:bold; margin-bottom:8px; color:#aaa; }
 
-    select, input[type="date"], button {
-      width: 100%; padding: 8px; margin-top: 5px; background: rgba(255, 255, 255, 0.1);
-      color: white; border: 1px solid #555; border-radius: 6px; cursor: pointer; box-sizing: border-box;
+    select, input[type="date"], button{
+      width:100%; padding:8px; margin-top:5px; background:rgba(255,255,255,0.1);
+      color:white; border:1px solid #555; border-radius:6px; cursor:pointer; box-sizing:border-box;
     }
-    select option { background: #333; }
-    button:hover { background: rgba(255, 255, 255, 0.2); }
+    select option{ background:#333; }
+    button:hover{ background:rgba(255,255,255,0.2); }
 
-    .date-row { display: flex; gap: 8px; }
-    .date-row input { flex: 2; margin-top: 0; }
-    .date-row button { flex: 1; margin-top: 0; }
-    label { cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 14px; }
-    input[type="range"] { width: 100%; margin-top: 5px; cursor: pointer; }
+    .date-row{ display:flex; gap:8px; }
+    .date-row input{ flex:2; margin-top:0; }
+    .date-row button{ flex:1; margin-top:0; }
+    label{ cursor:pointer; display:flex; align-items:center; gap:8px; font-size:14px; }
+    input[type="range"]{ width:100%; margin-top:5px; cursor:pointer; }
 
-    .time-display-box { text-align: center; font-size: 18px; font-weight: bold; color: #0df; margin-bottom: 5px; }
+    .time-display-box{ text-align:center; font-size:18px; font-weight:bold; color:#0df; margin-bottom:5px; }
 
-    .leaflet-popup-content-wrapper, .leaflet-popup-tip {
-      background: rgba(20, 20, 20, 0.95) !important; backdrop-filter: blur(10px) !important;
-      -webkit-backdrop-filter: blur(10px) !important; color: #ffffff !important; box-shadow: 0 4px 15px rgba(0,0,0,0.8) !important;
-      width: 320px;
+    .leaflet-popup-content-wrapper, .leaflet-popup-tip{
+      background:rgba(20,20,20,0.95) !important; backdrop-filter:blur(10px) !important;
+      -webkit-backdrop-filter:blur(10px) !important; color:#ffffff !important; box-shadow:0 4px 15px rgba(0,0,0,0.8) !important;
+      width:320px;
     }
-    .leaflet-popup-content hr { border: 0; border-top: 1px solid rgba(255, 255, 255, 0.15); margin: 10px 0; }
+    .leaflet-popup-content hr{ border:0; border-top:1px solid rgba(255,255,255,0.15); margin:10px 0; }
 
-    .dark-map-filter { filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%) grayscale(20%); }
-    .opacity-control { display: flex; align-items: center; gap: 10px; margin-top: 5px; font-size: 12px; }
-    .opacity-label { min-width: 75px; }
+    .opacity-control{ display:flex; align-items:center; gap:10px; margin-top:5px; font-size:12px; }
+    .opacity-label{ min-width:75px; }
 
-    .best-date-box {
-      background: rgba(0, 255, 255, 0.1); border: 1px solid rgba(0, 255, 255, 0.3);
-      padding: 10px; border-radius: 6px; text-align: center; cursor: pointer; transition: 0.2s;
+    .best-date-box{
+      background:rgba(0,255,255,0.1); border:1px solid rgba(0,255,255,0.3);
+      padding:10px; border-radius:6px; text-align:center; cursor:pointer; transition:0.2s;
     }
-    .best-date-box:hover { background: rgba(0, 255, 255, 0.2); }
+    .best-date-box:hover{ background:rgba(0,255,255,0.2); }
 
-    .notice-text { font-size: 11px; color: #999; margin-top: 8px; line-height: 1.4; word-break: keep-all; }
+    .notice-text{ font-size:11px; color:#999; margin-top:8px; line-height:1.4; word-break:keep-all; }
 
-    .btn-simulate { background: rgba(0, 255, 100, 0.2); border: 1px solid #0f0; color: #0f0; font-weight: bold; padding: 12px; margin-top: 10px; transition: 0.3s; }
-    .btn-simulate:hover:not(:disabled) { background: rgba(0, 255, 100, 0.4); color: white; }
-    .btn-simulate:disabled { background: rgba(100, 100, 100, 0.2); border-color: #555; color: #888; cursor: not-allowed; }
-
-    #progress-container { width: 100%; height: 6px; background: #333; border-radius: 3px; margin-top: 10px; overflow: hidden; display: none; }
-    #progress-bar { width: 0%; height: 100%; background: #0df; transition: width 0.2s ease-out; }
-
-    .leaflet-control-locate {
-      background: #1e1e1e; border: 2px solid rgba(255,255,255,0.2); color: white; cursor: pointer;
-      border-radius: 4px; text-align: center; line-height: 30px; font-size: 18px; width: 34px; height: 34px;
-      box-shadow: 0 1px 5px rgba(0,0,0,0.65); transition: background 0.2s;
+    .btn-simulate{
+      background:rgba(0,255,100,0.2); border:1px solid #0f0; color:#0f0; font-weight:bold;
+      padding:12px; margin-top:10px; transition:0.3s;
     }
-    .leaflet-control-locate:hover { background: #333; }
+    .btn-simulate:hover:not(:disabled){ background:rgba(0,255,100,0.4); color:white; }
+    .btn-simulate:disabled{ background:rgba(100,100,100,0.2); border-color:#555; color:#888; cursor:not-allowed; }
 
-    .gonogo-box { padding: 10px; border-radius: 8px; margin-bottom: 12px; text-align: left; font-size: 13px; line-height: 1.6; }
-    .gonogo-title { font-size: 18px; font-weight: 900; text-align: center; margin-bottom: 8px; letter-spacing: 1px; }
-    .gonogo-item { display: flex; justify-content: space-between; margin-bottom: 4px; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 4px; }
-    .gonogo-item:last-child { border-bottom: none; padding-bottom: 0; }
-    .mw-window-box { background: rgba(0, 0, 0, 0.5); border: 1px solid #444; padding: 12px; border-radius: 8px; margin-bottom: 12px; }
-    .timeline-legend { display: flex; gap: 6px; font-size: 10px; justify-content: center; margin-top: 6px; flex-wrap: wrap; }
-    .legend-item { display: flex; align-items: center; gap: 4px; color: #ddd; }
-    .legend-box { width: 10px; height: 10px; border-radius: 2px; }
-    .cloud-detail { font-size: 11px; color: #aaa; font-weight: normal; }
-    .warning-text { color: #ff5555; font-weight: bold; font-size: 12px; }
-    .safe-text { color: #55ff55; font-size: 12px; }
-    .mode-badge { display:inline-block; padding: 4px 8px; border-radius: 999px; font-size: 11px; margin-top: 6px; border: 1px solid rgba(255,255,255,0.15); }
-    .mode-weather { background: rgba(0,255,100,0.15); color:#9f9; }
-    .mode-no-weather { background: rgba(255,200,0,0.15); color:#fd0; }
+    .btn-capture{
+      background:rgba(0,221,255,0.15); border:1px dashed #0df; color:#0df;
+      font-weight:bold; padding:10px; margin-top:12px; transition:0.3s; border-radius:6px;
+    }
+    .btn-capture:hover{ background:rgba(0,221,255,0.35); color:#fff; }
 
-    @media (max-width: 768px) {
-      .mobile-handle { display: block; }
-      #ui-panel {
-        top: auto; bottom: 0; right: 0; left: 0; width: 100vw;
-        border-radius: 20px 20px 0 0; max-height: 65vh;
-        transform: translateY(0); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        padding-bottom: 30px;
+    #progress-container{ width:100%; height:6px; background:#333; border-radius:3px; margin-top:10px; overflow:hidden; display:none; }
+    #progress-bar{ width:0%; height:100%; background:#0df; transition:width 0.2s ease-out; }
+
+    .leaflet-control-locate{
+      background:#1e1e1e; border:2px solid rgba(255,255,255,0.2); color:white; cursor:pointer;
+      border-radius:4px; text-align:center; line-height:30px; font-size:18px; width:34px; height:34px;
+      box-shadow:0 1px 5px rgba(0,0,0,0.65); transition:background 0.2s;
+    }
+    .leaflet-control-locate:hover{ background:#333; }
+
+    .gonogo-box{ padding:10px; border-radius:8px; margin-bottom:12px; text-align:left; font-size:13px; line-height:1.6; }
+    .gonogo-title{ font-size:18px; font-weight:900; text-align:center; margin-bottom:8px; letter-spacing:1px; }
+    .gonogo-item{ display:flex; justify-content:space-between; margin-bottom:4px; border-bottom:1px dashed rgba(255,255,255,0.1); padding-bottom:4px; }
+    .gonogo-item:last-child{ border-bottom:none; padding-bottom:0; }
+    .mw-window-box{ background:rgba(0,0,0,0.5); border:1px solid #444; padding:12px; border-radius:8px; margin-bottom:12px; }
+    .timeline-legend{ display:flex; gap:6px; font-size:10px; justify-content:center; margin-top:6px; flex-wrap:wrap; }
+    .legend-item{ display:flex; align-items:center; gap:4px; color:#ddd; }
+    .legend-box{ width:10px; height:10px; border-radius:2px; }
+    .cloud-detail{ font-size:11px; color:#aaa; font-weight:normal; }
+    .warning-text{ color:#ff5555; font-weight:bold; font-size:12px; }
+    .safe-text{ color:#55ff55; font-size:12px; }
+    .mode-badge{ display:inline-block; padding:4px 8px; border-radius:999px; font-size:11px; margin-top:6px; border:1px solid rgba(255,255,255,0.15); }
+    .mode-weather{ background:rgba(0,255,100,0.15); color:#9f9; }
+    .mode-no-weather{ background:rgba(255,200,0,0.15); color:#fd0; }
+
+    @media (max-width:768px){
+      .mobile-handle{ display:block; }
+      #ui-panel{
+        top:auto; bottom:0; right:0; left:0; width:100vw;
+        border-radius:20px 20px 0 0; max-height:65vh;
+        transform:translateY(0); transition:transform 0.3s cubic-bezier(0.4,0,0.2,1);
+        padding-bottom:30px;
       }
-      #ui-panel.collapsed {
-        transform: translateY(calc(100% - 50px));
-      }
-      .leaflet-control-locate { margin-left: 10px !important; margin-top: 10px !important; }
-      .leaflet-popup-content-wrapper, .leaflet-popup-tip { width: 280px; }
+      #ui-panel.collapsed{ transform:translateY(calc(100% - 50px)); }
+      .leaflet-control-locate{ margin-left:10px !important; margin-top:10px !important; }
+      .leaflet-popup-content-wrapper, .leaflet-popup-tip{ width:280px; }
     }
   </style>
 </head>
+
 <body>
   <div id="ui-panel">
     <div class="mobile-handle" id="mobile-toggle"></div>
@@ -166,28 +175,44 @@
     // ===== Date helpers =====
     function pad2(n){ return String(n).padStart(2,'0'); }
     function fmtYMD(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
-    function getToday(){ return new Date(); } // ✅ FIX#2: today 고정 제거
+    function getToday(){ return new Date(); }
     function daysBetween(a, b){
       const aa = new Date(a.getFullYear(), a.getMonth(), a.getDate());
       const bb = new Date(b.getFullYear(), b.getMonth(), b.getDate());
       return Math.round((bb - aa) / 86400000);
     }
 
-    // ✅ FIX#2: 초기 오늘도 함수 기반
+    // [신규] 달 위상을 이모지로 변환
+    function getMoonPhaseEmoji(phase) {
+      if (phase < 0.06) return "🌑";
+      if (phase < 0.19) return "🌒";
+      if (phase < 0.31) return "🌓";
+      if (phase < 0.44) return "🌔";
+      if (phase < 0.56) return "🌕";
+      if (phase < 0.69) return "🌖";
+      if (phase < 0.81) return "🌗";
+      if (phase < 0.94) return "🌘";
+      return "🌑";
+    }
+
     document.getElementById('obs-date').value = fmtYMD(getToday());
 
     // ===== Map init =====
     const map = L.map('map', { zoomControl: false }).setView([38.09, 127.07], 10);
     L.control.zoom({ position: 'topleft' }).addTo(map);
 
+    // ✅ [적용 1] LocateControl: Leaflet 권장 이벤트 처리(L.DomEvent) + 전파 차단
     const LocateControl = L.Control.extend({
       options: { position: 'topleft' },
       onAdd: function(map) {
         const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-locate');
         container.innerHTML = '📍';
         container.title = '내 위치로 이동';
-        container.onclick = function(e) {
-          e.stopPropagation();
+
+        L.DomEvent.disableClickPropagation(container);
+        L.DomEvent.on(container, 'click', (e) => {
+          L.DomEvent.stop(e);
+
           if (navigator.geolocation) {
             container.innerHTML = '⌛';
             navigator.geolocation.getCurrentPosition(
@@ -197,6 +222,7 @@
                 const lng = pos.coords.longitude;
                 map.setView([lat, lng], 11);
                 analyzeData(lat, lng, "내 위치 (현위치)");
+
                 if(window.innerWidth <= 768) {
                   document.getElementById('ui-panel').classList.add('collapsed');
                 }
@@ -209,12 +235,14 @@
           } else {
             alert('이 브라우저에서는 위치 정보가 지원되지 않습니다.');
           }
-        };
+        });
+
         return container;
       }
     });
     map.addControl(new LocateControl());
 
+    // Layers
     const standardLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' });
     const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19, attribution: '&copy; CARTO' });
     const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: '&copy; Esri' });
@@ -256,7 +284,10 @@
     }
 
     function evaluateMoonImpact(date, lat, lng, gcAzimuth) {
-      const moonIllum = Math.round(SunCalc.getMoonIllumination(date).fraction * 100);
+      const illum = SunCalc.getMoonIllumination(date);
+      const moonIllum = Math.round(illum.fraction * 100);
+      const moonEmoji = getMoonPhaseEmoji(illum.phase);
+
       const mPos = SunCalc.getMoonPosition(date, lat, lng);
       const mAlt = mPos.altitude * 180 / Math.PI;
       let mAz = (mPos.azimuth * 180 / Math.PI) + 180;
@@ -274,7 +305,7 @@
         else if (mAlt > 10) { statusColor = "#f55"; statusText = `🔴 달빛 씻김 (고도 ${Math.round(mAlt)}°)`; timelineColor = "#635"; }
         else { statusColor = "#fa0"; statusText = `🟡 저고도 간섭 주의`; timelineColor = "#c60"; }
       }
-      return { isSafe, statusColor, statusText, timelineColor, moonIllum, mAlt, azDiff };
+      return { isSafe, statusColor, statusText, timelineColor, moonIllum, mAlt, azDiff, moonEmoji };
     }
 
     function evaluateCloudImpact(cLow, cMid, cHigh, cTotal) {
@@ -310,14 +341,12 @@
       return { isSafe, statusColor, statusText, bortleClass, angleDiff, distance, bearingToSeoul };
     }
 
-    // ✅ FIX#2: today 고정 제거 반영
     function isWithinWeatherWindow(dateStr){
       const sel = new Date(dateStr);
       const diff = daysBetween(getToday(), sel);
       return diff >= 0 && diff <= 14;
     }
 
-    // ✅ FIX#1: 후보지 데이터 검증
     function validateSpots(spots){
       const bad = spots.filter(s => typeof s.lat !== 'number' || typeof s.lng !== 'number');
       if (bad.length) {
@@ -327,7 +356,6 @@
       return true;
     }
 
-    // ✅ FIX#3: Open-Meteo hourly time 인덱스 찾기
     function findHourlyIndex(hourlyTimes, dateStr, hour){
       if (!Array.isArray(hourlyTimes)) return -1;
       const target = `${dateStr}T${pad2(hour)}:00`;
@@ -359,9 +387,14 @@
       }
     }
 
+    // ✅ [적용 2] analyze 레이스 컨디션 방지용 시퀀스 토큰
+    let analyzeSeq = 0;
+
     let marker = null, coreLine = null, currentLat = null, currentLng = null;
 
     async function analyzeData(lat, lng, spotName=null){
+      const mySeq = ++analyzeSeq;
+
       currentLat = lat; currentLng = lng;
       if (marker) map.removeLayer(marker);
       if (coreLine) map.removeLayer(coreLine);
@@ -463,12 +496,16 @@
                   <b>💨 풍속:</b> ${wind}m/s &nbsp;👉 ${wind >= 5 ? '<span class="warning-text">⚠️ 강풍 주의</span>' : '<span class="safe-text">✅ 안전</span>'}<br>
                 `;
               } else {
-                console.warn("Hourly index not found for:", dateStr, selectedHour, weatherData.hourly.time?.[0], weatherData.hourly.time?.[weatherData.hourly.time.length-1]);
+                // ✅ [적용 3] 시간 매칭 실패 메시지 강화
+                weatherWarningHtml = `<span class="warning-text">⚠️ 시간 매칭 실패(예보 시간표 불일치)</span><br>`;
               }
             }
           }
         } catch(e){ console.log("기상 데이터 로드 실패", e); }
       }
+
+      // ✅ [적용 2] 최신 analyze가 아니면 UI 업데이트 중단
+      if (mySeq !== analyzeSeq) return;
 
       const isCoreSafe = (gcPos.altitude >= 10);
       let goTitle="", goBg="", goBorder="";
@@ -489,18 +526,18 @@
       }
 
       const rCloud = !isWeatherAvailable ? `알 수 없음` : `<span><b style="color:${cloudEval.statusColor}">${cloudEval.statusText}</b> <span class="cloud-detail">(상${cHigh}%)</span></span>`;
-      const rMoon = `<span><b style="color:${moonEvalCurrent.statusColor}">${moonEvalCurrent.statusText}</b></span>`;
+      const rMoon = `<span><span style="font-size:16px; vertical-align:middle; margin-right:4px;">${moonEvalCurrent.moonEmoji}</span><b style="color:${moonEvalCurrent.statusColor}">${moonEvalCurrent.statusText}</b></span>`;
       const rCore = isCoreSafe ? `<span style="color:#0df">고도 ${Math.round(gcPos.altitude)}°</span>` : `<span style="color:#f55">고도 ${Math.round(gcPos.altitude)}° (낮음)</span>`;
       const rLP   = `<span><b style="color:${lpEval.statusColor}">${lpEval.statusText}</b></span>`;
       const titleHtml = spotName ? `<b>📍 ${spotName}</b><br>` : `<b>📍 관측 후보지</b> (${lat.toFixed(3)}, ${lng.toFixed(3)})<br>`;
 
       let popupText = `
-        <div style="font-size: 13px; line-height: 1.6;">
+        <div style="font-size: 13px; line-height: 1.6; padding-bottom:5px;">
           ${titleHtml}
           <span style="color:#aaa; font-size:11px;">기준 시간: ${dateStr} ${pad2(selectedHour)}:00</span><br>
           <div class="gonogo-box" style="background:${goBg}; border:1px solid ${goBorder}; margin-top:8px;">
             <div class="gonogo-title" style="color:${goBorder}">${goTitle}</div>
-            <div class="gonogo-item"><span>🌙 <b>달:</b></span> ${rMoon}</div>
+            <div class="gonogo-item"><span>🌙 <b>달 모양:</b></span> ${rMoon}</div>
             <div class="gonogo-item"><span>☁️ <b>구름:</b></span> ${rCloud}</div>
             <div class="gonogo-item"><span>🌌 <b>코어:</b></span> ${rCore}</div>
             <div class="gonogo-item"><span>💡 <b>광해방향:</b></span> ${rLP}</div>
@@ -513,7 +550,7 @@
               <div class="legend-item"><div class="legend-box" style="background:#06a;"></div>코어 낮음</div>
               <div class="legend-item"><div class="legend-box" style="background:#635;"></div>달 씻김</div>
               <div class="legend-item"><div class="legend-box" style="background:#c60;"></div>저고도달</div>
-              <div class="legend-item"><div class="legend-box" style="background:#f00;"></div>달/코어 겹침</div>
+              <div class="legend-item"><div class="legend-box" style="background:#f00;"></div>달 겹침</div>
               <div class="legend-item"><div class="legend-box" style="background:#fd0;"></div><b style="color:#fd0;">실전(15°↑)</b></div>
             </div>
             <hr style="border-top:1px dashed #555; margin:10px 0;">
@@ -523,14 +560,55 @@
             </div>
           </div>
       `;
-      if (isWeatherAvailable) popupText += `${weatherWarningHtml}`;
-      popupText += `</div>`;
+      if (isWeatherAvailable || weatherWarningHtml) popupText += `${weatherWarningHtml}`;
+
+      // ✅ [적용 3(핵심)] 팝업 캡처 버튼 클릭 전파 차단(event 전달)
+      popupText += `
+        <button class="btn-capture" onclick="capturePopup(event, this)">
+          📸 결과 캡처하여 저장하기
+        </button>
+      </div>`;
 
       marker.bindPopup(popupText).openPopup();
     }
 
+    // ✅ [적용 3] 팝업 캡처 시 지도 클릭 전파 차단
+    window.capturePopup = function(ev, btnElement) {
+      if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+
+      const popupEl = document.querySelector('.leaflet-popup');
+      if (!popupEl) return;
+
+      // 추가 안전핀: 팝업 영역 클릭 전파 차단
+      popupEl.addEventListener('click', (e) => { e.stopPropagation(); }, { once: true });
+
+      const originalText = btnElement.innerText;
+      btnElement.innerText = "⏳ 이미지 저장 중...";
+      btnElement.style.pointerEvents = "none";
+
+      html2canvas(popupEl, {
+        backgroundColor: "#1e1e1e",
+        scale: 2,
+        useCORS: true
+      }).then(canvas => {
+        const dateStr = document.getElementById('obs-date').value;
+        const link = document.createElement('a');
+        link.download = `MilkyWay_결과_${dateStr}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+
+        btnElement.innerText = originalText;
+        btnElement.style.pointerEvents = "auto";
+      }).catch(err => {
+        alert("이미지 저장 중 오류가 발생했습니다.");
+        btnElement.innerText = originalText;
+        btnElement.style.pointerEvents = "auto";
+        console.error(err);
+      });
+    };
+
     function calculateBestDate(){
-      let bestDate=null, minFraction=1.0;
+      let bestDate=null, minFraction=1.0, bestEmoji="🌑";
       for(let i=0;i<=30;i++){
         const testD = new Date();
         testD.setDate(testD.getDate() + i);
@@ -539,6 +617,7 @@
         if(moon.fraction < minFraction){
           minFraction = moon.fraction;
           bestDate = testD;
+          bestEmoji = getMoonPhaseEmoji(moon.phase);
         }
       }
       if(bestDate){
@@ -546,7 +625,9 @@
         const bestStr = `${bY}-${bM}-${bD}`;
         document.getElementById('best-date-box').innerHTML =
           `<div style="font-size:16px; font-weight:bold; color:#0df;">${bY}년 ${bM}월 ${bD}일</div>
-           <div style="font-size:12px; color:#aaa; margin-top:4px;">예상 달빛: ${Math.round(minFraction*100)}% (그믐달 부근)</div>
+           <div style="font-size:13px; color:#aaa; margin-top:4px;">
+             ${bestEmoji} 예상 달빛: ${Math.round(minFraction*100)}%
+           </div>
            <div style="font-size:11px; color:#777; margin-top:4px;">클릭하여 날짜 적용</div>`;
         document.getElementById('best-date-box').onclick = function(){
           document.getElementById('obs-date').value = bestStr;
@@ -568,7 +649,6 @@
       { name: "부여 사랑나무 (충남)", lat: 36.257, lng: 126.903 }
     ];
 
-    // ✅ FIX#1: 후보지 검증(초기 1회)
     validateSpots(candidateSpots);
 
     document.getElementById('btn-simulate').addEventListener('click', async function(){
@@ -584,7 +664,6 @@
         return;
       }
 
-      // ✅ FIX#1: 시뮬 직전에도 방어(실수 방지)
       if(!validateSpots(candidateSpots)){
         msg.style.display='block'; msg.style.color='#f55';
         msg.innerText='❌ 후보지 데이터에 오류가 있어 시뮬레이션을 중단합니다. (Console 확인)';
@@ -632,13 +711,7 @@
             const cloudEval = evaluateCloudImpact(cLow, cMid, cHigh, cTotal);
             const lpEval = evaluateDirectionalLightPollution(spot.lat, spot.lng, gcPos.azimuth);
 
-            // ✅ FIX#3(+개선): cTotal도 점수에 반영
-            let score = 100
-              - (cTotal * 0.4)
-              - (cLow   * 0.2)
-              - (cMid   * 0.4)
-              - (cHigh  * 1.5)
-              - ((lpEval.bortleClass - 1) * 8);
+            let score = 100 - (cTotal * 0.4) - (cLow * 0.2) - (cMid * 0.4) - (cHigh * 1.5) - ((lpEval.bortleClass - 1) * 8);
 
             if(!moonEval.isSafe) score -= 30;
             if(moonEval.timelineColor === "#f00") score -= 60;
@@ -692,7 +765,7 @@
     });
 
     document.getElementById('btn-today').addEventListener('click', function(){
-      document.getElementById('obs-date').value = fmtYMD(getToday()); // ✅ FIX#2
+      document.getElementById('obs-date').value = fmtYMD(getToday());
       updateWeatherModeUI();
       if(currentLat!=null) analyzeData(currentLat, currentLng);
     });
@@ -708,8 +781,8 @@
     document.getElementById('obs-date').addEventListener('change', function(){
       updateWeatherModeUI();
       if(currentLat!=null) analyzeData(currentLat, currentLng);
-      const msg = document.getElementById('simulate-msg');
-      if(isWithinWeatherWindow(document.getElementById('obs-date').value)){ msg.style.display='none'; }
+      const m = document.getElementById('simulate-msg');
+      if(isWithinWeatherWindow(document.getElementById('obs-date').value)){ m.style.display='none'; }
     });
 
     map.on('click', function(e){ analyzeData(e.latlng.lat, e.latlng.lng); });
