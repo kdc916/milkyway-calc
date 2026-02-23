@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>은하수 관측 확률 계산기 Pro Max (Stable+ Final)</title>
+  <title>은하수 관측 확률 계산기 Pro Max (Global Edition)</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -31,16 +31,18 @@
     .ui-section:last-child{ margin-bottom:0; }
     .ui-title{ font-size:14px; font-weight:bold; margin-bottom:8px; color:#aaa; }
 
-    select, input[type="date"], button{
+    select, input[type="date"], input[type="text"], button{
       width:100%; padding:8px; margin-top:5px; background:rgba(255,255,255,0.1);
       color:white; border:1px solid #555; border-radius:6px; cursor:pointer; box-sizing:border-box;
     }
+    input[type="text"] { cursor: text; }
+    input[type="text"]::placeholder { color: #888; }
     select option{ background:#333; }
     button:hover{ background:rgba(255,255,255,0.2); }
 
-    .date-row{ display:flex; gap:8px; }
-    .date-row input{ flex:2; margin-top:0; }
-    .date-row button{ flex:1; margin-top:0; }
+    .flex-row{ display:flex; gap:8px; }
+    .flex-row input, .flex-row select { flex:2; margin-top:0; }
+    .flex-row button{ flex:1; margin-top:0; }
     label{ cursor:pointer; display:flex; align-items:center; gap:8px; font-size:14px; }
     input[type="range"]{ width:100%; margin-top:5px; cursor:pointer; }
 
@@ -73,9 +75,15 @@
 
     .btn-capture{
       background:rgba(0,221,255,0.15); border:1px dashed #0df; color:#0df;
-      font-weight:bold; padding:10px; margin-top:12px; transition:0.3s; border-radius:6px;
+      font-weight:bold; padding:10px; margin-top:12px; transition:0.3s; border-radius:6px; width: 100%; box-sizing: border-box;
     }
     .btn-capture:hover{ background:rgba(0,221,255,0.35); color:#fff; }
+    
+    .btn-favorite {
+      background:rgba(255,200,0,0.15); border:1px dashed #fd0; color:#fd0;
+      font-weight:bold; padding:10px; margin-top:6px; transition:0.3s; border-radius:6px; width: 100%; box-sizing: border-box;
+    }
+    .btn-favorite:hover { background:rgba(255,200,0,0.35); color:#fff; }
 
     #progress-container{ width:100%; height:6px; background:#333; border-radius:3px; margin-top:10px; overflow:hidden; display:none; }
     #progress-bar{ width:0%; height:100%; background:#0df; transition:width 0.2s ease-out; }
@@ -122,6 +130,25 @@
     <div class="mobile-handle" id="mobile-toggle"></div>
 
     <div class="ui-section">
+      <div class="ui-title">🌍 세계 장소 검색</div>
+      <div class="flex-row">
+        <input type="text" id="search-input" placeholder="도시, 지역, 명소 입력..." autocomplete="off">
+        <button id="btn-search">검색</button>
+      </div>
+      <div class="notice-text" id="search-hint" style="display:none;"></div>
+    </div>
+
+    <div class="ui-section">
+      <div class="ui-title">⭐ 내 장소 (즐겨찾기)</div>
+      <div class="flex-row">
+        <select id="favorite-spots">
+          <option value="">저장된 장소 선택...</option>
+        </select>
+        <button id="btn-del-fav" style="flex:0.5; background:rgba(255,50,50,0.2); border-color:#f55; color:#f55;">삭제</button>
+      </div>
+    </div>
+
+    <div class="ui-section">
       <div class="ui-title">🗺️ 지도 테마</div>
       <select id="map-theme">
         <option value="dark">다크 모드 (관측 최적화)</option>
@@ -141,7 +168,7 @@
 
     <div class="ui-section">
       <div class="ui-title">📅 관측 예정일</div>
-      <div class="date-row">
+      <div class="flex-row">
         <input type="date" id="obs-date">
         <button id="btn-today">오늘</button>
       </div>
@@ -182,7 +209,6 @@
       return Math.round((bb - aa) / 86400000);
     }
 
-    // [신규] 달 위상을 이모지로 변환
     function getMoonPhaseEmoji(phase) {
       if (phase < 0.06) return "🌑";
       if (phase < 0.19) return "🌒";
@@ -201,7 +227,6 @@
     const map = L.map('map', { zoomControl: false }).setView([38.09, 127.07], 10);
     L.control.zoom({ position: 'topleft' }).addTo(map);
 
-    // ✅ [적용 1] LocateControl: Leaflet 권장 이벤트 처리(L.DomEvent) + 전파 차단
     const LocateControl = L.Control.extend({
       options: { position: 'topleft' },
       onAdd: function(map) {
@@ -212,7 +237,6 @@
         L.DomEvent.disableClickPropagation(container);
         L.DomEvent.on(container, 'click', (e) => {
           L.DomEvent.stop(e);
-
           if (navigator.geolocation) {
             container.innerHTML = '⌛';
             navigator.geolocation.getCurrentPosition(
@@ -236,13 +260,11 @@
             alert('이 브라우저에서는 위치 정보가 지원되지 않습니다.');
           }
         });
-
         return container;
       }
     });
     map.addControl(new LocateControl());
 
-    // Layers
     const standardLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' });
     const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19, attribution: '&copy; CARTO' });
     const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: '&copy; Esri' });
@@ -257,6 +279,155 @@
 
     document.getElementById('mobile-toggle').addEventListener('click', function() {
       document.getElementById('ui-panel').classList.toggle('collapsed');
+    });
+
+    // ===== 신규: 즐겨찾기(Local Storage) 로직 =====
+    function loadFavorites() {
+      const sel = document.getElementById('favorite-spots');
+      sel.innerHTML = '<option value="">저장된 장소 선택...</option>';
+      let favs = JSON.parse(localStorage.getItem('mw_fav_spots') || '[]');
+      favs.forEach((f, i) => {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = f.name;
+        sel.appendChild(opt);
+      });
+    }
+
+    window.saveFavorite = function(ev, lat, lng, defaultName) {
+      if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+      let favs = JSON.parse(localStorage.getItem('mw_fav_spots') || '[]');
+      let name = prompt("저장할 장소 이름을 입력하세요:", defaultName || '새로운 관측지');
+      if (!name) return; // 사용자가 취소한 경우
+
+      favs.push({ name: name, lat: lat, lng: lng });
+      localStorage.setItem('mw_fav_spots', JSON.stringify(favs));
+      loadFavorites();
+      alert(`'${name}'이(가) 즐겨찾기에 저장되었습니다.`);
+    };
+
+    document.getElementById('favorite-spots').addEventListener('change', function(e) {
+      const val = e.target.value;
+      if (val === "") return;
+      let favs = JSON.parse(localStorage.getItem('mw_fav_spots') || '[]');
+      const spot = favs[val];
+      if (spot) {
+        map.setView([spot.lat, spot.lng], 11);
+        analyzeData(spot.lat, spot.lng, spot.name);
+        if(window.innerWidth <= 768) {
+          document.getElementById('ui-panel').classList.add('collapsed');
+        }
+      }
+    });
+
+    document.getElementById('btn-del-fav').addEventListener('click', function() {
+      const sel = document.getElementById('favorite-spots');
+      const val = sel.value;
+      if (val === "") {
+        alert("목록에서 삭제할 장소를 먼저 선택해주세요.");
+        return;
+      }
+      let favs = JSON.parse(localStorage.getItem('mw_fav_spots') || '[]');
+      const name = favs[val].name;
+      if(confirm(`'${name}'을(를) 삭제하시겠습니까?`)) {
+        favs.splice(val, 1);
+        localStorage.setItem('mw_fav_spots', JSON.stringify(favs));
+        loadFavorites();
+        map.closePopup();
+      }
+    });
+
+    // 초기 즐겨찾기 로드
+    loadFavorites();
+
+    // ===== Search Feature (Nominatim Geocoding) =====
+    let searchAbort = null;
+    let lastSearchTs = 0;
+
+    function showSearchHint(text, color="#999"){
+      const el = document.getElementById('search-hint');
+      el.style.display = 'block';
+      el.style.color = color;
+      el.textContent = text;
+    }
+    function hideSearchHint(){
+      const el = document.getElementById('search-hint');
+      el.style.display = 'none';
+      el.textContent = '';
+    }
+
+    async function performSearch() {
+      const query = document.getElementById('search-input').value.trim();
+      if (!query) return;
+
+      const now = Date.now();
+      if (now - lastSearchTs < 350) return;
+      lastSearchTs = now;
+
+      const btn = document.getElementById('btn-search');
+      const originalText = btn.innerText;
+      btn.innerText = "⏳...";
+      btn.disabled = true;
+      showSearchHint("검색 중...", "#0df");
+
+      if (searchAbort) searchAbort.abort();
+      searchAbort = new AbortController();
+
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&limit=5&accept-language=ko&q=${encodeURIComponent(query)}`;
+        const response = await fetch(url, {
+          signal: searchAbort.signal,
+          headers: { "Accept": "application/json" }
+        });
+
+        if (!response.ok) {
+          if (response.status === 429) {
+            showSearchHint("요청이 너무 많아요. 잠시 후 다시 검색해주세요.", "#fd0");
+          } else {
+            showSearchHint(`검색 실패(${response.status}). 네트워크 이슈일 수 있어요.`, "#f55");
+          }
+          return;
+        }
+
+        const data = await response.json();
+
+        if (data && data.length > 0) {
+          let pick = 0;
+          if (data.length > 1) {
+            const menu = data.map((d, i) => `${i+1}) ${d.display_name}`).join("\n");
+            const ans = prompt(`검색 결과가 여러 개입니다. 번호를 선택하세요:\n\n${menu}\n\n(취소하면 1번 자동 선택)`, "1");
+            const n = parseInt(ans, 10);
+            if (!isNaN(n) && n >= 1 && n <= data.length) pick = n - 1;
+          }
+
+          const lat = parseFloat(data[pick].lat);
+          const lng = parseFloat(data[pick].lon);
+          const displayName = (data[pick].display_name || "").split(',')[0] || query;
+
+          map.setView([lat, lng], 11);
+          analyzeData(lat, lng, displayName);
+
+          hideSearchHint();
+
+          if(window.innerWidth <= 768) {
+            document.getElementById('ui-panel').classList.add('collapsed');
+          }
+        } else {
+          showSearchHint("검색 결과가 없습니다. 다른 키워드를 써보세요.", "#fd0");
+        }
+      } catch (error) {
+        if (error && error.name === "AbortError") return;
+        console.error("Geocoding error:", error);
+        showSearchHint("검색 중 오류가 발생했습니다.", "#f55");
+      } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+      }
+    }
+
+    document.getElementById('btn-search').addEventListener('click', performSearch);
+    document.getElementById('search-input').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') performSearch();
     });
 
     // ===== Milky Way & Astro Logic =====
@@ -387,9 +558,7 @@
       }
     }
 
-    // ✅ [적용 2] analyze 레이스 컨디션 방지용 시퀀스 토큰
     let analyzeSeq = 0;
-
     let marker = null, coreLine = null, currentLat = null, currentLng = null;
 
     async function analyzeData(lat, lng, spotName=null){
@@ -496,7 +665,6 @@
                   <b>💨 풍속:</b> ${wind}m/s &nbsp;👉 ${wind >= 5 ? '<span class="warning-text">⚠️ 강풍 주의</span>' : '<span class="safe-text">✅ 안전</span>'}<br>
                 `;
               } else {
-                // ✅ [적용 3] 시간 매칭 실패 메시지 강화
                 weatherWarningHtml = `<span class="warning-text">⚠️ 시간 매칭 실패(예보 시간표 불일치)</span><br>`;
               }
             }
@@ -504,7 +672,6 @@
         } catch(e){ console.log("기상 데이터 로드 실패", e); }
       }
 
-      // ✅ [적용 2] 최신 analyze가 아니면 UI 업데이트 중단
       if (mySeq !== analyzeSeq) return;
 
       const isCoreSafe = (gcPos.altitude >= 10);
@@ -530,6 +697,9 @@
       const rCore = isCoreSafe ? `<span style="color:#0df">고도 ${Math.round(gcPos.altitude)}°</span>` : `<span style="color:#f55">고도 ${Math.round(gcPos.altitude)}° (낮음)</span>`;
       const rLP   = `<span><b style="color:${lpEval.statusColor}">${lpEval.statusText}</b></span>`;
       const titleHtml = spotName ? `<b>📍 ${spotName}</b><br>` : `<b>📍 관측 후보지</b> (${lat.toFixed(3)}, ${lng.toFixed(3)})<br>`;
+
+      // 따옴표 치환 (함수 파라미터로 넘길 때 오류 방지)
+      const safeSpotName = spotName ? spotName.replace(/'/g, "\\'") : '';
 
       let popupText = `
         <div style="font-size: 13px; line-height: 1.6; padding-bottom:5px;">
@@ -562,24 +732,24 @@
       `;
       if (isWeatherAvailable || weatherWarningHtml) popupText += `${weatherWarningHtml}`;
 
-      // ✅ [적용 3(핵심)] 팝업 캡처 버튼 클릭 전파 차단(event 전달)
       popupText += `
         <button class="btn-capture" onclick="capturePopup(event, this)">
           📸 결과 캡처하여 저장하기
+        </button>
+        <button class="btn-favorite" onclick="saveFavorite(event, ${lat}, ${lng}, '${safeSpotName}')">
+          ⭐ 이 장소 즐겨찾기에 저장
         </button>
       </div>`;
 
       marker.bindPopup(popupText).openPopup();
     }
 
-    // ✅ [적용 3] 팝업 캡처 시 지도 클릭 전파 차단
     window.capturePopup = function(ev, btnElement) {
       if (ev) { ev.preventDefault(); ev.stopPropagation(); }
 
       const popupEl = document.querySelector('.leaflet-popup');
       if (!popupEl) return;
 
-      // 추가 안전핀: 팝업 영역 클릭 전파 차단
       popupEl.addEventListener('click', (e) => { e.stopPropagation(); }, { once: true });
 
       const originalText = btnElement.innerText;
@@ -673,7 +843,7 @@
       btn.disabled = true;
       msg.style.display = 'block';
       msg.style.color = '#0df';
-      msg.innerText = "전국 주요 명소를 분석 중입니다.";
+      msg.innerText = "국내 주요 명소를 분석 중입니다.";
       progContainer.style.display = 'block';
       progBar.style.width = '0%';
 
