@@ -161,6 +161,66 @@
     }
     .btn-clear-results:hover{ background:rgba(255,255,255,0.16); }
 
+    /* ===== Help/Guide (Light Pollution) ===== */
+    .help-toggle{
+      display:flex; align-items:center; justify-content:space-between;
+      width:100%;
+      padding:10px;
+      border-radius:10px;
+      background:rgba(255,255,255,0.06);
+      border:1px solid rgba(255,255,255,0.12);
+      margin-top:6px;
+      font-weight:800;
+      letter-spacing:0.2px;
+    }
+    .help-toggle:hover{ background:rgba(255,255,255,0.10); }
+    .help-toggle .badge{
+      font-size:11px; font-weight:800; padding:3px 8px; border-radius:999px;
+      border:1px solid rgba(255,255,255,0.15); color:#0df;
+      background:rgba(0,221,255,0.10);
+    }
+    .help-body{
+      display:none;
+      margin-top:10px;
+      padding:12px;
+      border-radius:12px;
+      background:rgba(0,0,0,0.35);
+      border:1px solid rgba(255,255,255,0.12);
+      font-size:12px;
+      color:#ddd;
+      line-height:1.55;
+    }
+    .help-body strong{ color:#fff; }
+    .help-grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:8px;
+      margin-top:10px;
+    }
+    .lp-chip{
+      display:flex; align-items:center; gap:8px;
+      padding:8px; border-radius:10px;
+      border:1px solid rgba(255,255,255,0.12);
+      background:rgba(255,255,255,0.04);
+      font-size:11px;
+      color:#ccc;
+    }
+    .lp-dot{
+      width:10px; height:10px; border-radius:50%;
+      box-shadow:0 0 10px rgba(255,255,255,0.15);
+      flex:0 0 10px;
+    }
+    .help-hr{
+      border:0;
+      border-top:1px dashed rgba(255,255,255,0.14);
+      margin:10px 0;
+    }
+    .help-tip{
+      font-size:11px;
+      color:#aaa;
+      margin-top:8px;
+    }
+
     @media (max-width:768px){
       .mobile-handle{ display:block; }
       #ui-panel{
@@ -173,12 +233,62 @@
       .leaflet-control-locate{ margin-left:10px !important; margin-top:10px !important; }
       .leaflet-popup-content-wrapper, .leaflet-popup-tip{ width:280px; }
     }
+
+    /* ===== Mobile Panel Drag (Swipe up/down) ===== */
+    @media (max-width:768px){
+      #ui-panel{
+        touch-action: pan-y;
+        will-change: transform;
+      }
+      #ui-panel.dragging{
+        overflow: hidden !important;
+      }
+      #ui-panel.collapsed{
+        overflow: hidden !important;
+      }
+    }
   </style>
 </head>
 
 <body>
   <div id="ui-panel">
     <div class="mobile-handle" id="mobile-toggle"></div>
+
+    <!-- ✅ Help / Guide (New) -->
+    <div class="ui-section">
+      <div class="ui-title">❓ 초보자 가이드</div>
+      <button id="btn-help-toggle" class="help-toggle" type="button">
+        <span>광해지도(빛공해) 보는 법</span>
+        <span class="badge" id="help-badge">OPEN</span>
+      </button>
+
+      <div id="help-body" class="help-body">
+        <strong>이 오버레이는 “하늘이 얼마나 밝은지(빛공해)”를 대략 보여줘요.</strong><br>
+        한마디로, <strong>어두울수록 은하수는 선명</strong>하고 <strong>밝을수록 은하수는 씻겨요</strong>.
+
+        <div class="help-grid" aria-label="광해 범례">
+          <div class="lp-chip"><span class="lp-dot" style="background:#ffffff;"></span>아주 어두움 (최상)</div>
+          <div class="lp-chip"><span class="lp-dot" style="background:#6ff;"></span>어두움 (추천)</div>
+          <div class="lp-chip"><span class="lp-dot" style="background:#0f0;"></span>보통 (촬영 가능)</div>
+          <div class="lp-chip"><span class="lp-dot" style="background:#ff0;"></span>밝음 (후반보정 각오)</div>
+          <div class="lp-chip"><span class="lp-dot" style="background:#f80;"></span>매우 밝음 (비추)</div>
+          <div class="lp-chip"><span class="lp-dot" style="background:#f00;"></span>도심급 (거의 불가)</div>
+        </div>
+
+        <hr class="help-hr">
+
+        <strong>빠른 판단법</strong>
+        <div style="margin-top:6px;">
+          • <strong>촬영 포인트</strong>는 되도록 <strong>파란/청록/흰 계열</strong>을 노리기<br>
+          • <strong>은하수 코어 방향</strong>에 <strong>빨강/주황 덩어리(도시)</strong>가 있으면 ❌<br>
+          • 오버레이는 “대략”이에요. <strong>지형(산/계곡)</strong> 때문에 실제 체감이 달라질 수 있어요.
+        </div>
+
+        <div class="help-tip">
+          TIP: 아래 “✨ 광해 지도”에서 <strong>투명도</strong>를 30~60%로 조절하면 지형/도로 확인이 편해요.
+        </div>
+      </div>
+    </div>
 
     <div class="ui-section">
       <div class="ui-title">🌍 세계 장소 검색</div>
@@ -267,6 +377,31 @@
 
     document.getElementById('obs-date').value = fmtYMD(getToday());
 
+    // ===== Help toggle (persist) =====
+    (function initHelpToggle(){
+      const btn = document.getElementById('btn-help-toggle');
+      const body = document.getElementById('help-body');
+      const badge = document.getElementById('help-badge');
+
+      const KEY = "mw_help_open";
+      const saved = localStorage.getItem(KEY);
+      let open = (saved === null) ? true : (saved === "1"); // 기본은 열어둠(초보자 친화)
+
+      function apply(){
+        body.style.display = open ? "block" : "none";
+        badge.textContent = open ? "OPEN" : "CLOSED";
+        badge.style.color = open ? "#0df" : "#aaa";
+        badge.style.background = open ? "rgba(0,221,255,0.10)" : "rgba(255,255,255,0.06)";
+      }
+      apply();
+
+      btn.addEventListener('click', () => {
+        open = !open;
+        localStorage.setItem(KEY, open ? "1" : "0");
+        apply();
+      });
+    })();
+
     // ===== Map init =====
     const map = L.map('map', { zoomControl: false }).setView([38.09, 127.07], 10);
     L.control.zoom({ position: 'topleft' }).addTo(map);
@@ -322,9 +457,133 @@
       { opacity: 0.6, maxNativeZoom: 6, maxZoom: 19, zIndex: 10 }
     ).addTo(map);
 
+    // ===== Mobile handle click (keep) =====
     document.getElementById('mobile-toggle').addEventListener('click', function() {
-      document.getElementById('ui-panel').classList.toggle('collapsed');
+      if(window.innerWidth <= 768){
+        document.getElementById('ui-panel').classList.toggle('collapsed');
+      }
     });
+
+    // ===== Mobile Panel Drag (Swipe up/down to expand/collapse) =====
+    (function initMobilePanelDrag(){
+      const panel = document.getElementById('ui-panel');
+      const handle = document.getElementById('mobile-toggle');
+
+      function isMobile(){ return window.innerWidth <= 768; }
+
+      function getPanelMetrics(){
+        const rect = panel.getBoundingClientRect();
+        const visiblePeek = 50; // MUST match CSS: calc(100% - 50px)
+        const fullH = rect.height;
+        const collapsedY = Math.max(0, fullH - visiblePeek);
+        return { fullH, collapsedY, visiblePeek };
+      }
+
+      let dragging = false;
+      let startY = 0;
+      let startTranslate = 0;
+      let currentTranslate = 0;
+
+      function setTranslateY(y){
+        panel.style.transform = `translateY(${y}px)`;
+      }
+
+      function clearInlineTransform(){
+        panel.style.transform = '';
+      }
+
+      function expand(){
+        panel.classList.remove('collapsed');
+        panel.classList.remove('dragging');
+        clearInlineTransform();
+      }
+
+      function collapse(){
+        panel.classList.add('collapsed');
+        panel.classList.remove('dragging');
+        clearInlineTransform();
+      }
+
+      function canStartDrag(target, clientY){
+        if(!isMobile()) return false;
+
+        if(handle && (target === handle || handle.contains(target))) return true;
+        if(panel.classList.contains('collapsed')) return true;
+
+        const atTop = panel.scrollTop <= 0;
+        if(!atTop) return false;
+
+        const rect = panel.getBoundingClientRect();
+        const topZone = rect.top + 70;
+        return clientY <= topZone;
+      }
+
+      function onPointerDown(e){
+        if(!canStartDrag(e.target, e.clientY)) return;
+
+        dragging = true;
+        panel.classList.add('dragging');
+
+        startY = e.clientY;
+
+        const { collapsedY } = getPanelMetrics();
+
+        if(panel.classList.contains('collapsed')){
+          startTranslate = collapsedY;
+          setTranslateY(startTranslate);
+        } else {
+          startTranslate = 0;
+          setTranslateY(0);
+        }
+
+        currentTranslate = startTranslate;
+
+        e.preventDefault();
+        e.stopPropagation();
+        panel.setPointerCapture?.(e.pointerId);
+      }
+
+      function onPointerMove(e){
+        if(!dragging) return;
+
+        const { collapsedY } = getPanelMetrics();
+        const dy = e.clientY - startY;
+
+        let next = startTranslate + dy;
+        if(next < 0) next = 0;
+        if(next > collapsedY) next = collapsedY;
+
+        currentTranslate = next;
+        setTranslateY(currentTranslate);
+
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      function onPointerUp(e){
+        if(!dragging) return;
+        dragging = false;
+
+        const { collapsedY } = getPanelMetrics();
+        panel.classList.remove('dragging');
+
+        const threshold = collapsedY * 0.5;
+        if(currentTranslate > threshold) collapse();
+        else expand();
+
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      panel.addEventListener('pointerdown', onPointerDown, { passive:false });
+      window.addEventListener('pointermove', onPointerMove, { passive:false });
+      window.addEventListener('pointerup', onPointerUp, { passive:false });
+
+      window.addEventListener('resize', () => {
+        panel.classList.remove('dragging');
+        panel.style.transform = '';
+      });
+    })();
 
     // ===== Search Feature (패널 리스트 렌더링) =====
     const elSearchStatus  = document.getElementById('search-status');
@@ -376,7 +635,6 @@
       elSearchResults.style.display = "block";
       btnClearResults.style.display = "block";
 
-      // 클릭 핸들러(이벤트 위임)
       elSearchResults.onclick = (e) => {
         const item = e.target.closest('.search-item');
         if(!item) return;
@@ -391,17 +649,14 @@
         map.setView([lat, lng], 11);
         analyzeData(lat, lng, displayName);
 
-        // 선택 후 결과창 닫기(깔끔)
         clearSearchUI();
 
-        // 모바일 패널 접기
         if(window.innerWidth <= 768) {
           document.getElementById('ui-panel').classList.add('collapsed');
         }
       };
     }
 
-    // XSS 방어용(검색 결과를 innerHTML로 그리므로 최소한의 escape)
     function escapeHtml(str){
       return String(str || "")
         .replaceAll("&", "&amp;")
@@ -415,7 +670,6 @@
       const query = document.getElementById('search-input').value.trim();
       if (!query) return;
 
-      // debounce: 350ms 이내 연타 방지
       const now = Date.now();
       if (now - lastSearchTs < 350) return;
       lastSearchTs = now;
@@ -427,7 +681,6 @@
 
       setSearchStatus("검색 중...", "#0df", true);
 
-      // 이전 요청 취소
       if (searchAbort) searchAbort.abort();
       searchAbort = new AbortController();
 
@@ -461,7 +714,7 @@
           renderSearchResults([]);
         }
       } catch (error) {
-        if (error && error.name === "AbortError") return; // 새 검색으로 취소됨
+        if (error && error.name === "AbortError") return;
         console.error("Geocoding error:", error);
         setSearchStatus("검색 중 오류가 발생했습니다. (네트워크/정책 이슈 가능)", "#f55", true);
         renderSearchResults([]);
