@@ -3,32 +3,30 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>은하수 관측 확률 계산기 Pro Max (Global Edition)</title>
+  <title>은하수 관측 확률 계산기 Pro Max</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <style>
     html, body { height:100%; }
-    body {
-      margin: 0; padding: 0;
-      overflow: hidden; background: #000;
-      /* iOS bounce 완화 */
-      position: fixed; width:100%;
-      overscroll-behavior: none;
-      -webkit-overflow-scrolling: auto;
+    body{
+      margin:0; padding:0;
+      overflow:hidden; background:#000;
+      position:fixed; width:100%;
+      overscroll-behavior:none;
+      -webkit-overflow-scrolling:auto;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
     }
-    #map { width: 100vw; height: 100vh; }
+    #map{ width:100vw; height:100vh; }
 
     #ui-panel{
       position:absolute; top:20px; right:20px; z-index:1000;
       background:rgba(30,30,30,0.85); backdrop-filter:blur(10px); color:white;
-      padding:20px; border-radius:12px; font-family:sans-serif;
-      box-shadow:0 4px 15px rgba(0,0,0,0.5); width:270px; max-height:90vh;
-      overflow-y:auto;
-      box-sizing:border-box;
+      padding:20px; border-radius:12px;
+      box-shadow:0 4px 15px rgba(0,0,0,0.5); width:290px; max-height:90vh;
+      overflow-y:auto; box-sizing:border-box;
 
-      /* iOS momentum scroll (열린 상태에서만 유효하게 쓰려고 JS로도 제어) */
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain;
       contain: layout paint;
@@ -40,66 +38,65 @@
     .mobile-handle{
       display:none; width:40px; height:5px; background:rgba(255,255,255,0.4);
       border-radius:3px; margin:0 auto 15px auto; cursor:pointer;
-      touch-action: none;
+      touch-action:none;
     }
 
     .ui-section{ margin-bottom:15px; }
-    .ui-section:last-child{ margin-bottom:0; }
-    .ui-title{ font-size:14px; font-weight:bold; margin-bottom:8px; color:#aaa; }
+    .ui-title{ font-size:14px; font-weight:900; margin-bottom:8px; color:#aaa; letter-spacing:0.2px; }
 
-    select, input[type="date"], input[type="text"], button{
+    select, input[type="date"], input[type="text"], input[type="number"], button{
       width:100%; padding:8px; margin-top:5px; background:rgba(255,255,255,0.1);
-      color:white; border:1px solid #555; border-radius:6px; cursor:pointer; box-sizing:border-box;
+      color:white; border:1px solid #555; border-radius:8px; cursor:pointer; box-sizing:border-box;
     }
-    input[type="text"] { cursor: text; }
-    input[type="text"]::placeholder { color: #888; }
+    input[type="text"], input[type="number"]{ cursor:text; }
+    input::placeholder{ color:#888; }
     select option{ background:#333; }
     button:hover{ background:rgba(255,255,255,0.2); }
 
     .flex-row{ display:flex; gap:8px; }
     .flex-row input, .flex-row select { flex:2; margin-top:0; }
     .flex-row button{ flex:1; margin-top:0; }
+
     label{ cursor:pointer; display:flex; align-items:center; gap:8px; font-size:14px; }
     input[type="range"]{ width:100%; margin-top:5px; cursor:pointer; }
 
-    .time-display-box{ text-align:center; font-size:18px; font-weight:bold; color:#0df; margin-bottom:5px; }
+    .time-display-box{ text-align:center; font-size:18px; font-weight:900; color:#0df; margin-bottom:5px; }
 
     .leaflet-popup-content-wrapper, .leaflet-popup-tip{
-      background:rgba(20,20,20,0.95) !important; backdrop-filter:blur(10px) !important;
-      -webkit-backdrop-filter:blur(10px) !important; color:#ffffff !important; box-shadow:0 4px 15px rgba(0,0,0,0.8) !important;
-      width:320px;
+      background:rgba(20,20,20,0.95) !important;
+      backdrop-filter:blur(10px) !important;
+      -webkit-backdrop-filter:blur(10px) !important;
+      color:#ffffff !important;
+      box-shadow:0 4px 15px rgba(0,0,0,0.8) !important;
+      width:340px;
     }
     .leaflet-popup-content hr{ border:0; border-top:1px solid rgba(255,255,255,0.15); margin:10px 0; }
 
     .opacity-control{ display:flex; align-items:center; gap:10px; margin-top:5px; font-size:12px; }
-    .opacity-label{ min-width:75px; }
+    .opacity-label{ min-width:85px; }
 
-    .best-date-box{
-      background:rgba(0,255,255,0.1); border:1px solid rgba(0,255,255,0.3);
-      padding:10px; border-radius:6px; text-align:center; cursor:pointer; transition:0.2s;
-    }
-    .best-date-box:hover{ background:rgba(0,255,255,0.2); }
-
-    .notice-text{ font-size:11px; color:#999; margin-top:8px; line-height:1.4; word-break:keep-all; }
+    .notice-text{ font-size:11px; color:#999; margin-top:8px; line-height:1.45; word-break:keep-all; }
 
     .btn-simulate{
-      background:rgba(0,255,100,0.2); border:1px solid #0f0; color:#0f0; font-weight:bold;
-      padding:12px; margin-top:10px; transition:0.3s;
+      background:rgba(0,255,100,0.2); border:1px solid #0f0; color:#0f0; font-weight:900;
+      padding:12px; margin-top:10px; transition:0.3s; border-radius:10px;
     }
     .btn-simulate:hover:not(:disabled){ background:rgba(0,255,100,0.4); color:white; }
     .btn-simulate:disabled{ background:rgba(100,100,100,0.2); border-color:#555; color:#888; cursor:not-allowed; }
 
     .btn-capture{
       background:rgba(0,221,255,0.15); border:1px dashed #0df; color:#0df;
-      font-weight:bold; padding:10px; margin-top:12px; transition:0.3s; border-radius:6px; width: 100%; box-sizing: border-box;
+      font-weight:900; padding:10px; margin-top:12px; transition:0.3s; border-radius:10px;
+      width:100%; box-sizing:border-box;
     }
     .btn-capture:hover{ background:rgba(0,221,255,0.35); color:#fff; }
 
-    .btn-favorite {
+    .btn-favorite{
       background:rgba(255,200,0,0.15); border:1px dashed #fd0; color:#fd0;
-      font-weight:bold; padding:10px; margin-top:6px; transition:0.3s; border-radius:6px; width: 100%; box-sizing: border-box;
+      font-weight:900; padding:10px; margin-top:8px; transition:0.3s; border-radius:10px;
+      width:100%; box-sizing:border-box;
     }
-    .btn-favorite:hover { background:rgba(255,200,0,0.35); color:#fff; }
+    .btn-favorite:hover{ background:rgba(255,200,0,0.35); color:#fff; }
 
     #progress-container{ width:100%; height:6px; background:#333; border-radius:3px; margin-top:10px; overflow:hidden; display:none; }
     #progress-bar{ width:0%; height:100%; background:#0df; transition:width 0.2s ease-out; }
@@ -111,103 +108,221 @@
     }
     .leaflet-control-locate:hover{ background:#333; }
 
-    .gonogo-box{ padding:10px; border-radius:8px; margin-bottom:12px; text-align:left; font-size:13px; line-height:1.6; }
-    .gonogo-title{ font-size:18px; font-weight:900; text-align:center; margin-bottom:8px; letter-spacing:1px; }
-    .gonogo-item{ display:flex; justify-content:space-between; margin-bottom:4px; border-bottom:1px dashed rgba(255,255,255,0.1); padding-bottom:4px; }
+    .gonogo-box{ padding:10px; border-radius:12px; margin-bottom:12px; text-align:left; font-size:13px; line-height:1.6; }
+    .gonogo-title{ font-size:18px; font-weight:1000; text-align:center; margin-bottom:8px; letter-spacing:0.5px; }
+    .gonogo-item{ display:flex; justify-content:space-between; gap:10px; margin-bottom:4px; border-bottom:1px dashed rgba(255,255,255,0.1); padding-bottom:4px; }
     .gonogo-item:last-child{ border-bottom:none; padding-bottom:0; }
-    .mw-window-box{ background:rgba(0,0,0,0.5); border:1px solid #444; padding:12px; border-radius:8px; margin-bottom:12px; }
+    .mw-window-box{ background:rgba(0,0,0,0.5); border:1px solid #444; padding:12px; border-radius:12px; margin-bottom:12px; }
     .timeline-legend{ display:flex; gap:6px; font-size:10px; justify-content:center; margin-top:6px; flex-wrap:wrap; }
     .legend-item{ display:flex; align-items:center; gap:4px; color:#ddd; }
     .legend-box{ width:10px; height:10px; border-radius:2px; }
     .cloud-detail{ font-size:11px; color:#aaa; font-weight:normal; }
-    .warning-text{ color:#ff5555; font-weight:bold; font-size:12px; }
+    .warning-text{ color:#ff5555; font-weight:900; font-size:12px; }
     .safe-text{ color:#55ff55; font-size:12px; }
     .mode-badge{ display:inline-block; padding:4px 8px; border-radius:999px; font-size:11px; margin-top:6px; border:1px solid rgba(255,255,255,0.15); }
     .mode-weather{ background:rgba(0,255,100,0.15); color:#9f9; }
     .mode-no-weather{ background:rgba(255,200,0,0.15); color:#fd0; }
 
-    /* Search results */
     #search-status{ display:none; margin-top:8px; font-size:11px; color:#0df; line-height:1.4; word-break:keep-all; }
-    #search-results{ display:none; margin-top:10px; border:1px solid rgba(255,255,255,0.12); border-radius:10px; overflow:hidden; background:rgba(0,0,0,0.35); }
+    #search-results{ display:none; margin-top:10px; border:1px solid rgba(255,255,255,0.12); border-radius:12px; overflow:hidden; background:rgba(0,0,0,0.35); }
     .search-item{ padding:10px 10px; border-bottom:1px dashed rgba(255,255,255,0.12); cursor:pointer; transition:0.15s; }
     .search-item:last-child{ border-bottom:none; }
     .search-item:hover{ background:rgba(0,221,255,0.12); }
-    .search-main{ font-size:12.5px; font-weight:700; color:#fff; line-height:1.2; margin-bottom:4px; }
+    .search-main{ font-size:12.5px; font-weight:900; color:#fff; line-height:1.2; margin-bottom:4px; }
     .search-sub{ font-size:10.5px; color:#aaa; line-height:1.3; }
     .search-meta{ margin-top:6px; display:flex; justify-content:space-between; font-size:10px; color:#888; gap:8px; }
-    .btn-clear-results{ margin-top:8px; padding:8px; border-radius:8px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); color:#ddd; font-size:12px; }
+    .btn-clear-results{
+      margin-top:8px; padding:8px; border-radius:10px;
+      background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14);
+      color:#ddd; font-size:12px;
+    }
     .btn-clear-results:hover{ background:rgba(255,255,255,0.16); }
 
-    /* Help guide */
-    .help-toggle{ display:flex; align-items:center; justify-content:space-between; width:100%; padding:10px; border-radius:10px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); margin-top:6px; font-weight:800; letter-spacing:0.2px; }
+    .help-toggle{
+      display:flex; align-items:center; justify-content:space-between; width:100%;
+      padding:10px; border-radius:12px; background:rgba(255,255,255,0.06);
+      border:1px solid rgba(255,255,255,0.12); margin-top:6px; font-weight:1000;
+    }
     .help-toggle:hover{ background:rgba(255,255,255,0.10); }
-    .help-toggle .badge{ font-size:11px; font-weight:800; padding:3px 8px; border-radius:999px; border:1px solid rgba(255,255,255,0.15); color:#0df; background:rgba(0,221,255,0.10); }
-    .help-body{ display:none; margin-top:10px; padding:12px; border-radius:12px; background:rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.12); font-size:12px; color:#ddd; line-height:1.55; }
+    .help-toggle .badge{
+      font-size:11px; font-weight:900; padding:3px 8px; border-radius:999px;
+      border:1px solid rgba(255,255,255,0.15); color:#0df; background:rgba(0,221,255,0.10);
+    }
+    .help-body{
+      display:none; margin-top:10px; padding:12px; border-radius:12px;
+      background:rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.12);
+      font-size:12px; color:#ddd; line-height:1.55;
+    }
     .help-body strong{ color:#fff; }
     .help-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:10px; }
-    .lp-chip{ display:flex; align-items:center; gap:8px; padding:8px; border-radius:10px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.04); font-size:11px; color:#ccc; }
+    .lp-chip{ display:flex; align-items:center; gap:8px; padding:8px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.04); font-size:11px; color:#ccc; }
     .lp-dot{ width:10px; height:10px; border-radius:50%; box-shadow:0 0 10px rgba(255,255,255,0.15); flex:0 0 10px; }
     .help-hr{ border:0; border-top:1px dashed rgba(255,255,255,0.14); margin:10px 0; }
     .help-tip{ font-size:11px; color:#aaa; margin-top:8px; }
+
+    /* Compass / Navigation UI (panel + popup reuse) */
+    .card{
+      padding:10px; border-radius:12px;
+      border:1px solid rgba(255,255,255,0.12);
+      background:rgba(0,0,0,0.35);
+    }
+    .row{ display:flex; gap:10px; align-items:center; }
+    .row-between{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .muted{ color:#aaa; font-size:11px; line-height:1.35; }
+    .tiny{ font-size:10px; color:#888; }
+    .chip{
+      display:inline-flex; align-items:center; gap:6px;
+      padding:6px 10px; border-radius:999px;
+      border:1px solid rgba(255,255,255,0.14);
+      background:rgba(255,255,255,0.06);
+      font-size:12px; font-weight:900;
+    }
+
+    .toggle{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding:10px; border-radius:12px;
+      border:1px solid rgba(255,255,255,0.12);
+      background:rgba(255,255,255,0.04);
+      margin-top:6px;
+    }
+    .toggle-left{ display:flex; flex-direction:column; gap:3px; min-width:0; }
+    .toggle-title{ font-weight:1000; font-size:13px; color:#fff; }
+    .toggle-sub{ font-size:11px; color:#aaa; line-height:1.35; }
+
+    .switch{
+      position:relative; width:48px; height:28px; flex:0 0 48px;
+      border-radius:999px; background:rgba(255,255,255,0.12);
+      border:1px solid rgba(255,255,255,0.12);
+      cursor:pointer;
+    }
+    .switch::after{
+      content:"";
+      position:absolute; top:50%; left:4px;
+      width:22px; height:22px; border-radius:50%;
+      transform:translateY(-50%);
+      background:rgba(255,255,255,0.85);
+      transition:0.18s;
+    }
+    .switch.on{
+      background:rgba(0,221,255,0.20);
+      border-color:rgba(0,221,255,0.35);
+    }
+    .switch.on::after{ left:22px; background:#0df; }
 
     @media (max-width:768px){
       .mobile-handle{ display:block; }
       #ui-panel{
         top:auto; bottom:0; right:0; left:0; width:100vw;
-        border-radius:20px 20px 0 0; max-height:65vh;
+        border-radius:20px 20px 0 0; max-height:70vh;
         transform:translateY(0);
         transition:transform 0.28s cubic-bezier(0.4,0,0.2,1);
         padding-bottom:30px;
-
-        /* ✅ iOS 제스처 충돌 최소화 */
-        touch-action: none;
+        touch-action:none;
       }
       #ui-panel.collapsed{
-        transform:translateY(calc(100% - 50px));
-        overflow: hidden;
-        -webkit-overflow-scrolling: auto;
+        transform:translateY(calc(100% - 54px));
+        overflow:hidden;
+        -webkit-overflow-scrolling:auto;
       }
       .leaflet-control-locate{ margin-left:10px !important; margin-top:10px !important; }
-      .leaflet-popup-content-wrapper, .leaflet-popup-tip{ width:280px; }
+      .leaflet-popup-content-wrapper, .leaflet-popup-tip{ width:300px; }
     }
   </style>
 </head>
 
 <body>
-  <div id="ui-panel" aria-label="컨트롤 패널">
+  <div id="ui-panel" class="collapsed" aria-label="컨트롤 패널">
     <div class="mobile-handle" id="mobile-toggle" aria-label="패널 핸들"></div>
 
     <div class="ui-section">
       <div class="ui-title">❓ 초보자 가이드</div>
       <button id="btn-help-toggle" class="help-toggle" type="button">
-        <span>광해지도(빛공해) 보는 법</span>
+        <span>광해지도 + 은하수 방향</span>
         <span class="badge" id="help-badge">OPEN</span>
       </button>
 
       <div id="help-body" class="help-body">
-        <strong>이 오버레이는 “하늘이 얼마나 밝은지(빛공해)”를 대략 보여줘요.</strong><br>
-        한마디로, <strong>어두울수록 은하수는 선명</strong>하고 <strong>밝을수록 은하수는 씻겨요</strong>.
-
+        <strong>1) 광해 지도(빛공해)</strong><br>
+        <strong>어두울수록 은하수는 선명</strong>하고 <strong>밝을수록 씻겨요</strong>.
         <div class="help-grid" aria-label="광해 범례">
           <div class="lp-chip"><span class="lp-dot" style="background:#ffffff;"></span>아주 어두움 (최상)</div>
           <div class="lp-chip"><span class="lp-dot" style="background:#6ff;"></span>어두움 (추천)</div>
           <div class="lp-chip"><span class="lp-dot" style="background:#0f0;"></span>보통 (촬영 가능)</div>
-          <div class="lp-chip"><span class="lp-dot" style="background:#ff0;"></span>밝음 (후반보정 각오)</div>
+          <div class="lp-chip"><span class="lp-dot" style="background:#ff0;"></span>밝음 (보정 각오)</div>
           <div class="lp-chip"><span class="lp-dot" style="background:#f80;"></span>매우 밝음 (비추)</div>
           <div class="lp-chip"><span class="lp-dot" style="background:#f00;"></span>도심급 (거의 불가)</div>
         </div>
 
         <hr class="help-hr">
 
-        <strong>빠른 판단법</strong>
-        <div style="margin-top:6px;">
-          • <strong>촬영 포인트</strong>는 되도록 <strong>파란/청록/흰 계열</strong>을 노리기<br>
-          • <strong>은하수 코어 방향</strong>에 <strong>빨강/주황 덩어리(도시)</strong>가 있으면 ❌<br>
-          • 오버레이는 “대략”이에요. <strong>지형(산/계곡)</strong> 때문에 실제 체감이 달라질 수 있어요.
+        <strong>2) 은하수 방향</strong><br>
+        지도 아무 곳이나 누르면 팝업에 <strong>“은하수 방향(방위각)”</strong>이 나옵니다.<br>
+        • <strong>보라색 점선</strong>: 해당 시간 코어 방향<br>
+        • <strong>나침반</strong>: 카메라를 어느 쪽으로 돌릴지<br>
+        • <strong>선명도 점수</strong>: 코어 고도 + 달빛 + 구름 + 광해방향 종합
+        <div class="help-tip">TIP: “선명도 점수” 높은 시간대 → “방향”대로 프레이밍. 초보자 성공 루트, ㄹㅇ.</div>
+      </div>
+    </div>
+
+    <div class="ui-section">
+      <div class="ui-title">🧭 실시간 나침반(센서)</div>
+
+      <div class="toggle">
+        <div class="toggle-left">
+          <div class="toggle-title">실시간 방향 안내</div>
+          <div class="toggle-sub">모바일은 센서 권한이 필요할 수 있어요. (iOS는 버튼 누를 때만 허용됨)</div>
+        </div>
+        <div class="switch" id="switch-compass" role="switch" aria-checked="false" tabindex="0"></div>
+      </div>
+
+      <div class="card" style="margin-top:10px;">
+        <div class="row-between">
+          <div class="chip">현재 헤딩</div>
+          <div style="font-weight:1000; color:#0df;" id="heading-text">--°</div>
+        </div>
+        <div class="row-between" style="margin-top:8px;">
+          <div class="chip">은하수까지</div>
+          <div style="font-weight:1000; color:#ff77ff;" id="turn-text">--</div>
+        </div>
+        <div class="muted" style="margin-top:8px;" id="compass-status">OFF</div>
+      </div>
+    </div>
+
+    <div class="ui-section">
+      <div class="ui-title">📷 프레이밍 가이드(렌즈 화각)</div>
+
+      <div class="card">
+        <div class="flex-row">
+          <select id="sensor-preset" style="flex:1.4;">
+            <option value="ff">Full Frame (36x24)</option>
+            <option value="aps15">APS-C (1.5x, 23.5x15.6)</option>
+            <option value="aps16">APS-C (Canon 1.6x, 22.3x14.9)</option>
+            <option value="mft">Micro 4/3 (17.3x13.0)</option>
+          </select>
+          <input id="focal-mm" type="number" min="1" step="1" value="16" style="flex:1;" />
         </div>
 
-        <div class="help-tip">
-          TIP: 아래 “✨ 광해 지도”에서 <strong>투명도</strong>를 30~60%로 조절하면 지형/도로 확인이 편해요.
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;">
+          <div class="card" style="padding:8px;">
+            <div class="tiny">수평 화각</div>
+            <div style="font-weight:1000; color:#0df;" id="fov-h">--°</div>
+          </div>
+          <div class="card" style="padding:8px;">
+            <div class="tiny">수직 화각</div>
+            <div style="font-weight:1000; color:#0df;" id="fov-v">--°</div>
+          </div>
+          <div class="card" style="padding:8px;">
+            <div class="tiny">대각 화각</div>
+            <div style="font-weight:1000; color:#0df;" id="fov-d">--°</div>
+          </div>
+          <div class="card" style="padding:8px;">
+            <div class="tiny">환산(FF eq)</div>
+            <div style="font-weight:1000; color:#fd0;" id="fov-eq">--mm</div>
+          </div>
+        </div>
+
+        <div class="muted" style="margin-top:10px;">
+          팁: <b>은하수 아치</b>는 보통 “대각 100°급”이 유리(FF 14~16mm 느낌). 코어만 강하게 뽑으면 24~35mm 쪽도 좋아요.
         </div>
       </div>
     </div>
@@ -229,7 +344,7 @@
         <select id="favorite-spots">
           <option value="">저장된 장소 선택...</option>
         </select>
-        <button id="btn-del-fav" style="flex:0.5; background:rgba(255,50,50,0.2); border-color:#f55; color:#f55;">삭제</button>
+        <button id="btn-del-fav" style="flex:0.6; background:rgba(255,50,50,0.2); border-color:#f55; color:#f55;">삭제</button>
       </div>
     </div>
 
@@ -271,7 +386,7 @@
 
     <div class="ui-section" id="best-date-section">
       <div class="ui-title">🔭 다음 관측 최적기 추천</div>
-      <div class="best-date-box" id="best-date-box">계산 중...</div>
+      <div class="card" id="best-date-box">계산 중...</div>
       <button id="btn-simulate" class="btn-simulate">🚀 선택한 날짜의 최적지 찾기</button>
       <div id="progress-container"><div id="progress-bar"></div></div>
       <div id="simulate-msg" class="notice-text" style="display:none; color:#0df;"></div>
@@ -284,7 +399,9 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
 
   <script>
-    // ===== Date helpers =====
+    // =========================
+    // Utilities
+    // =========================
     function pad2(n){ return String(n).padStart(2,'0'); }
     function fmtYMD(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
     function getToday(){ return new Date(); }
@@ -293,7 +410,20 @@
       const bb = new Date(b.getFullYear(), b.getMonth(), b.getDate());
       return Math.round((bb - aa) / 86400000);
     }
-
+    function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+    function norm360(d){ d = d % 360; if(d < 0) d += 360; return d; }
+    function signedDeltaDeg(targetDeg, currentDeg){
+      // return [-180, 180]
+      let d = norm360(targetDeg) - norm360(currentDeg);
+      if(d > 180) d -= 360;
+      if(d < -180) d += 360;
+      return d;
+    }
+    function azToCompassKR(az){
+      const dirs = ["북","북북동","북동","동북동","동","동남동","남동","남남동","남","남남서","남서","서남서","서","서북서","북서","북북서"];
+      const idx = Math.round((norm360(az) / 22.5)) % 16;
+      return dirs[idx];
+    }
     function getMoonPhaseEmoji(phase) {
       if (phase < 0.06) return "🌑";
       if (phase < 0.19) return "🌒";
@@ -305,19 +435,30 @@
       if (phase < 0.94) return "🌘";
       return "🌑";
     }
+    function escapeHtml(str){
+      return String(str || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
 
+    // =========================
+    // Init date
+    // =========================
     document.getElementById('obs-date').value = fmtYMD(getToday());
 
-    // ===== Help toggle (persist) =====
+    // =========================
+    // Help toggle (persist)
+    // =========================
     (function initHelpToggle(){
       const btn = document.getElementById('btn-help-toggle');
       const body = document.getElementById('help-body');
       const badge = document.getElementById('help-badge');
-
       const KEY = "mw_help_open";
       const saved = localStorage.getItem(KEY);
       let open = (saved === null) ? true : (saved === "1");
-
       function apply(){
         body.style.display = open ? "block" : "none";
         badge.textContent = open ? "OPEN" : "CLOSED";
@@ -325,7 +466,6 @@
         badge.style.background = open ? "rgba(0,221,255,0.10)" : "rgba(255,255,255,0.06)";
       }
       apply();
-
       btn.addEventListener('click', () => {
         open = !open;
         localStorage.setItem(KEY, open ? "1" : "0");
@@ -333,7 +473,9 @@
       });
     })();
 
-    // ===== Map init =====
+    // =========================
+    // Map init
+    // =========================
     const map = L.map('map', { zoomControl: false }).setView([38.09, 127.07], 10);
     L.control.zoom({ position: 'topleft' }).addTo(map);
 
@@ -378,7 +520,6 @@
     const standardLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' });
     const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19, attribution: '&copy; CARTO' });
     const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: '&copy; Esri' });
-
     let currentBaseLayer = darkLayer;
     currentBaseLayer.addTo(map);
 
@@ -387,30 +528,26 @@
       { opacity: 0.6, maxNativeZoom: 6, maxZoom: 19, zIndex: 10 }
     ).addTo(map);
 
-    // =========================================================
-    // ✅ iOS 탄성(바운스) 스크롤/오버스크롤 방지 + 바텀시트 제스처
-    // - 접힌 상태: 패널(보이는 50px)에 "터치(탭)"하면 올라옴
-    // - 접힌 상태: 스와이프(위/아래)로 열고 닫힘
-    // - 열린 상태: 상단(핸들/상단영역)에서만 아래로 당기면 닫힘
-    // - 열린 상태: 내부는 정상 스크롤(모멘텀 포함)
-    // =========================================================
+    // =========================
+    // Mobile bottom sheet swipe (tap to open + 25% threshold)
+    // =========================
     (function initMobilePanelDrag(){
       const panel  = document.getElementById('ui-panel');
       const handle = document.getElementById('mobile-toggle');
 
-      const PEEK = 50;                 // CSS와 동일
-      const THRESHOLD_RATIO = 0.18;
-      const TOP_DRAG_ZONE = 90;         // 열린 상태에서 상단 드래그 허용 영역
-      const TAP_MOVE_PX = 8;            // 탭/드래그 판정 기준
+      const PEEK = 54;
+      const OPEN_THRESHOLD_RATIO = 0.75; // 25% 올리면 오픈
+      const CLOSE_THRESHOLD_RATIO = 0.18;
+      const TOP_DRAG_ZONE = 90;
+      const TAP_MOVE_PX = 10;
 
       let startY = 0;
       let startX = 0;
       let startTranslate = 0;
       let currentTranslate = 0;
       let dragging = false;
-      let tapCandidate = false;
 
-      // iOS 오버스크롤 봉인(전역)
+      let tapStartX = 0, tapStartY = 0, tapActive = false;
       let globalLock = false;
 
       const isMobile = () => window.innerWidth <= 768;
@@ -423,7 +560,6 @@
       function clearTranslate(){ panel.style.transform = ''; }
 
       function lockPanelScroll(lock){
-        // 드래그 중 내부 스크롤 봉인 + iOS bounce 방지 플래그
         if(lock){
           panel.dataset.prevOverflow = panel.style.overflow;
           panel.style.overflow = 'hidden';
@@ -448,7 +584,7 @@
         panel.style.transition = '';
         lockPanelScroll(false);
         clearTranslate();
-        panel.scrollTop = 0; // 접을 때 내부 위치 리셋(체감 좋아짐)
+        panel.scrollTop = 0;
       }
       function isCollapsed(){ return panel.classList.contains('collapsed'); }
 
@@ -459,17 +595,12 @@
 
       function canStartDrag(target, clientY){
         if(!isMobile()) return false;
-
-        // 접힌 상태: 보이는 PEEK 영역이면 어디서든 드래그 시작 OK
         if(isCollapsed()) return true;
-
-        // 열린 상태: 핸들이거나 상단 영역 + scrollTop이 맨 위일 때만
         const isHandle = handle && (target === handle || handle.contains(target));
         const atTop = panel.scrollTop <= 0;
         return (isHandle || withinTopZone(clientY)) && atTop;
       }
 
-      // ✅ iOS 탄성 스크롤(바운스) 방지: globalLock일 때는 문서 스크롤도 막음
       document.addEventListener('touchmove', (e) => {
         if(!isMobile()) return;
         if(globalLock && e.cancelable) e.preventDefault();
@@ -477,11 +608,17 @@
 
       function onTouchStart(e){
         if(!isMobile()) return;
-
         const t = e.touches[0];
         startY = t.clientY;
         startX = t.clientX;
-        tapCandidate = isCollapsed(); // 접힌 상태에서는 "탭으로 열기" 후보
+
+        if(isCollapsed()){
+          tapActive = true;
+          tapStartX = startX;
+          tapStartY = startY;
+        } else {
+          tapActive = false;
+        }
 
         if(!canStartDrag(e.target, t.clientY)) return;
 
@@ -504,16 +641,12 @@
         const dy = t.clientY - startY;
         const dx = t.clientX - startX;
 
-        // 탭 후보는 움직이면 해제
-        if(tapCandidate && (Math.abs(dy) > TAP_MOVE_PX || Math.abs(dx) > TAP_MOVE_PX)){
-          tapCandidate = false;
+        if(tapActive && (Math.abs(dx) > TAP_MOVE_PX || Math.abs(dy) > TAP_MOVE_PX)){
+          tapActive = false;
         }
-
         if(!dragging) return;
 
         const maxT = getMaxTranslate();
-
-        // 열린 상태에서 위로(dy<0)는 "컨텐츠 스크롤" 의도로 보고 드래그 종료
         if(!isCollapsed() && dy < 0){
           dragging = false;
           panel.style.transition = '';
@@ -523,8 +656,7 @@
         }
 
         let next = startTranslate + dy;
-        if(next < 0) next = 0;
-        if(next > maxT) next = maxT;
+        next = clamp(next, 0, maxT);
 
         currentTranslate = next;
         setTranslate(currentTranslate);
@@ -535,11 +667,9 @@
       function onTouchEnd(){
         if(!isMobile()) return;
 
-        // ✅ 접힌 상태에서 "탭"으로 열기(메뉴 끝 터치해서 올라가기)
-        // - 드래그가 아니었고, 거의 움직임이 없고, 접힌 상태면 확장
-        if(!dragging && tapCandidate && isCollapsed()){
+        if(isCollapsed() && tapActive){
           expand();
-          tapCandidate = false;
+          tapActive = false;
           return;
         }
 
@@ -550,11 +680,16 @@
         lockPanelScroll(false);
 
         const maxT = getMaxTranslate();
-        const threshold = maxT * THRESHOLD_RATIO;
-
-        // 가까운 쪽으로 스냅
-        if(currentTranslate > threshold) collapse();
-        else expand();
+        if(isCollapsed()){
+          const openThreshold = maxT * OPEN_THRESHOLD_RATIO;
+          if(currentTranslate < openThreshold) expand();
+          else collapse();
+        } else {
+          const closeThreshold = maxT * CLOSE_THRESHOLD_RATIO;
+          if(currentTranslate > closeThreshold) collapse();
+          else expand();
+        }
+        tapActive = false;
       }
 
       panel.addEventListener('touchstart', onTouchStart, { passive:false });
@@ -562,17 +697,8 @@
       panel.addEventListener('touchend',   onTouchEnd,   { passive:true  });
       panel.addEventListener('touchcancel',onTouchEnd,   { passive:true  });
 
-      // 핸들 탭 토글 (유지)
-      handle.addEventListener('click', () => {
-        if(!isMobile()) return;
-        isCollapsed() ? expand() : collapse();
-      });
-
-      // 접힌 상태에서 "보이는 영역 아무 곳이나 클릭/탭하면 열기" (PC 모바일 에뮬 대응)
-      panel.addEventListener('click', (e) => {
-        if(!isMobile()) return;
-        if(isCollapsed()) expand();
-      });
+      handle.addEventListener('click', () => { if(!isMobile()) return; isCollapsed() ? expand() : collapse(); });
+      handle.addEventListener('touchend', () => { if(!isMobile()) return; isCollapsed() ? expand() : collapse(); }, { passive:true });
 
       window.addEventListener('resize', () => {
         panel.style.transition = '';
@@ -581,7 +707,9 @@
       });
     })();
 
-    // ===== Favorites =====
+    // =========================
+    // Favorites
+    // =========================
     function loadFavorites() {
       const sel = document.getElementById('favorite-spots');
       sel.innerHTML = '<option value="">저장된 장소 선택...</option>';
@@ -593,19 +721,16 @@
         sel.appendChild(opt);
       });
     }
-
     window.saveFavorite = function(ev, lat, lng, defaultName) {
       if (ev) { ev.preventDefault(); ev.stopPropagation(); }
       let favs = JSON.parse(localStorage.getItem('mw_fav_spots') || '[]');
       let name = prompt("저장할 장소 이름을 입력하세요:", defaultName || '새로운 관측지');
       if (!name) return;
-
       favs.push({ name: name, lat: lat, lng: lng });
       localStorage.setItem('mw_fav_spots', JSON.stringify(favs));
       loadFavorites();
       alert(`'${name}'이(가) 즐겨찾기에 저장되었습니다.`);
     };
-
     document.getElementById('favorite-spots').addEventListener('change', function(e) {
       const val = e.target.value;
       if (val === "") return;
@@ -614,19 +739,13 @@
       if (spot) {
         map.setView([spot.lat, spot.lng], 11);
         analyzeData(spot.lat, spot.lng, spot.name);
-        if(window.innerWidth <= 768) {
-          document.getElementById('ui-panel').classList.add('collapsed');
-        }
+        if(window.innerWidth <= 768) document.getElementById('ui-panel').classList.add('collapsed');
       }
     });
-
     document.getElementById('btn-del-fav').addEventListener('click', function() {
       const sel = document.getElementById('favorite-spots');
       const val = sel.value;
-      if (val === "") {
-        alert("목록에서 삭제할 장소를 먼저 선택해주세요.");
-        return;
-      }
+      if (val === "") { alert("목록에서 삭제할 장소를 먼저 선택해주세요."); return; }
       let favs = JSON.parse(localStorage.getItem('mw_fav_spots') || '[]');
       const name = favs[val].name;
       if(confirm(`'${name}'을(를) 삭제하시겠습니까?`)) {
@@ -636,14 +755,14 @@
         map.closePopup();
       }
     });
-
     loadFavorites();
 
-    // ===== Search Feature =====
+    // =========================
+    // Search (Nominatim)
+    // =========================
     const elSearchStatus  = document.getElementById('search-status');
     const elSearchResults = document.getElementById('search-results');
     const btnClearResults = document.getElementById('btn-clear-results');
-
     let searchAbort = null;
     let lastSearchTs = 0;
 
@@ -660,15 +779,6 @@
     }
     btnClearResults.addEventListener('click', clearSearchUI);
 
-    function escapeHtml(str){
-      return String(str || "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-    }
-
     function renderSearchResults(items){
       if(!items || items.length === 0){
         elSearchResults.innerHTML = "";
@@ -676,7 +786,6 @@
         btnClearResults.style.display = "none";
         return;
       }
-
       elSearchResults.innerHTML = items.map((it, idx) => {
         const main = (it.display_name || "").split(",")[0] || "결과";
         const sub = (it.display_name || "").replace(main + ",", "").trim();
@@ -703,7 +812,6 @@
         const idx = parseInt(item.dataset.idx, 10);
         const it = items[idx];
         if(!it) return;
-
         const lat = parseFloat(it.lat);
         const lng = parseFloat(it.lon);
         const displayName = (it.display_name || "").split(',')[0] || "선택한 위치";
@@ -712,17 +820,13 @@
         analyzeData(lat, lng, displayName);
 
         clearSearchUI();
-
-        if(window.innerWidth <= 768) {
-          document.getElementById('ui-panel').classList.add('collapsed');
-        }
+        if(window.innerWidth <= 768) document.getElementById('ui-panel').classList.add('collapsed');
       };
     }
 
     async function performSearch() {
       const query = document.getElementById('search-input').value.trim();
       if (!query) return;
-
       const now = Date.now();
       if (now - lastSearchTs < 350) return;
       lastSearchTs = now;
@@ -731,34 +835,21 @@
       const originalText = btn.innerText;
       btn.innerText = "⏳...";
       btn.disabled = true;
-
       setSearchStatus("검색 중...", "#0df", true);
 
       if (searchAbort) searchAbort.abort();
       searchAbort = new AbortController();
 
       try {
-        const url =
-          `https://nominatim.openstreetmap.org/search?` +
-          `format=json&limit=5&accept-language=ko&q=${encodeURIComponent(query)}`;
-
-        const response = await fetch(url, {
-          signal: searchAbort.signal,
-          headers: { "Accept": "application/json" }
-        });
-
+        const url = `https://nominatim.openstreetmap.org/search?format=json&limit=5&accept-language=ko&q=${encodeURIComponent(query)}`;
+        const response = await fetch(url, { signal: searchAbort.signal, headers: { "Accept": "application/json" } });
         if (!response.ok) {
-          if (response.status === 429) {
-            setSearchStatus("요청이 너무 많아요(429). 잠시 후 다시 검색해주세요.", "#fd0", true);
-          } else {
-            setSearchStatus(`검색 실패(${response.status}). 네트워크/정책 이슈일 수 있어요.`, "#f55", true);
-          }
+          if (response.status === 429) setSearchStatus("요청이 너무 많아요(429). 잠시 후 다시 검색해주세요.", "#fd0", true);
+          else setSearchStatus(`검색 실패(${response.status}). 네트워크/정책 이슈일 수 있어요.`, "#f55", true);
           renderSearchResults([]);
           return;
         }
-
         const data = await response.json();
-
         if (Array.isArray(data) && data.length > 0) {
           setSearchStatus(`검색 결과 ${data.length}개 (클릭하여 이동)`, "#0df", true);
           renderSearchResults(data);
@@ -776,13 +867,269 @@
         btn.disabled = false;
       }
     }
-
     document.getElementById('btn-search').addEventListener('click', performSearch);
-    document.getElementById('search-input').addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') performSearch();
-    });
+    document.getElementById('search-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') performSearch(); });
 
-    // ===== Astro Logic =====
+    // =========================
+    // Weather window UI
+    // =========================
+    function isWithinWeatherWindow(dateStr){
+      const sel = new Date(dateStr);
+      const diff = daysBetween(getToday(), sel);
+      return diff >= 0 && diff <= 14;
+    }
+    function updateWeatherModeUI(){
+      const dateStr = document.getElementById('obs-date').value;
+      const badge = document.getElementById('mode-badge');
+      const btn = document.getElementById('btn-simulate');
+      const within = isWithinWeatherWindow(dateStr);
+
+      if(within){
+        badge.textContent = "MODE: Weather ON";
+        badge.classList.remove('mode-no-weather');
+        badge.classList.add('mode-weather');
+        btn.disabled = false;
+        btn.textContent = "🚀 선택한 날짜의 최적지 찾기";
+      } else {
+        badge.textContent = "MODE: Weather OFF (14일 이후)";
+        badge.classList.remove('mode-weather');
+        badge.classList.add('mode-no-weather');
+        btn.disabled = true;
+        btn.textContent = "🌙 14일 이후: 날씨 없이 분석";
+        const msg = document.getElementById('simulate-msg');
+        msg.style.display = 'block';
+        msg.style.color = '#fd0';
+        msg.innerText = '⚠️ 선택 날짜가 14일 이후라 전국 최적지 시뮬레이션은 비활성화됩니다.';
+      }
+    }
+
+    // =========================
+    // Lens FOV / framing guide
+    // =========================
+    const SENSOR = {
+      ff:   { w:36.0, h:24.0, crop:1.0, name:"Full Frame" },
+      aps15:{ w:23.5, h:15.6, crop:1.5, name:"APS-C 1.5x" },
+      aps16:{ w:22.3, h:14.9, crop:1.6, name:"APS-C 1.6x" },
+      mft:  { w:17.3, h:13.0, crop:2.0, name:"Micro 4/3" },
+    };
+
+    function fovDeg(sensorSizeMm, focalMm){
+      // 2 * atan(size / (2*f))
+      const rad = 2 * Math.atan(sensorSizeMm / (2 * focalMm));
+      return rad * 180 / Math.PI;
+    }
+    function updateFovUI(){
+      const preset = document.getElementById('sensor-preset').value;
+      const f = parseFloat(document.getElementById('focal-mm').value || "0");
+      const s = SENSOR[preset] || SENSOR.ff;
+
+      if(!isFinite(f) || f <= 0){
+        document.getElementById('fov-h').textContent = "--°";
+        document.getElementById('fov-v').textContent = "--°";
+        document.getElementById('fov-d').textContent = "--°";
+        document.getElementById('fov-eq').textContent = "--mm";
+        return;
+      }
+
+      const diag = Math.sqrt(s.w*s.w + s.h*s.h);
+      const fh = fovDeg(s.w, f);
+      const fv = fovDeg(s.h, f);
+      const fd = fovDeg(diag, f);
+      const eq = (f * s.crop);
+
+      document.getElementById('fov-h').textContent = `${fh.toFixed(1)}°`;
+      document.getElementById('fov-v').textContent = `${fv.toFixed(1)}°`;
+      document.getElementById('fov-d').textContent = `${fd.toFixed(1)}°`;
+      document.getElementById('fov-eq').textContent = `${eq.toFixed(1)}mm`;
+    }
+    document.getElementById('sensor-preset').addEventListener('change', updateFovUI);
+    document.getElementById('focal-mm').addEventListener('input', updateFovUI);
+    updateFovUI();
+
+    function getFovSummaryHtml(){
+      const preset = document.getElementById('sensor-preset').value;
+      const f = parseFloat(document.getElementById('focal-mm').value || "0");
+      const s = SENSOR[preset] || SENSOR.ff;
+      if(!isFinite(f) || f <= 0) return `<div class="muted">프레이밍 가이드: 값이 비어있어요.</div>`;
+      const diag = Math.sqrt(s.w*s.w + s.h*s.h);
+      const fh = fovDeg(s.w, f);
+      const fv = fovDeg(s.h, f);
+      const fd = fovDeg(diag, f);
+      const eq = (f * s.crop);
+      return `
+        <div class="card" style="margin-top:10px;">
+          <div class="row-between">
+            <div style="font-weight:1000;">📷 프레이밍 (${escapeHtml(s.name)} / ${f}mm)</div>
+            <div class="tiny">FF eq ${eq.toFixed(1)}mm</div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
+            <div class="card" style="padding:8px;">
+              <div class="tiny">수평</div>
+              <div style="font-weight:1000; color:#0df;">${fh.toFixed(1)}°</div>
+            </div>
+            <div class="card" style="padding:8px;">
+              <div class="tiny">수직</div>
+              <div style="font-weight:1000; color:#0df;">${fv.toFixed(1)}°</div>
+            </div>
+            <div class="card" style="padding:8px;">
+              <div class="tiny">대각</div>
+              <div style="font-weight:1000; color:#0df;">${fd.toFixed(1)}°</div>
+            </div>
+            <div class="card" style="padding:8px;">
+              <div class="tiny">추천</div>
+              <div style="font-weight:1000; color:#fd0;">${fd >= 90 ? "아치 유리" : (fd >= 65 ? "코어+주변" : "코어 집중")}</div>
+            </div>
+          </div>
+          <div class="muted" style="margin-top:8px;">
+            • 아치: 대각 90~110°대(FF 14~16mm 느낌)<br>
+            • 코어: 대각 60~85°대(FF 20~35mm 느낌)
+          </div>
+        </div>
+      `;
+    }
+
+    // =========================
+    // Compass sensor (real-time heading)
+    // - Toggle ON/OFF
+    // - iOS requires permission request on user gesture
+    // =========================
+    const switchCompass = document.getElementById('switch-compass');
+    const headingText = document.getElementById('heading-text');
+    const turnText = document.getElementById('turn-text');
+    const compassStatus = document.getElementById('compass-status');
+
+    let compassEnabled = false;
+    let lastHeadingDeg = null;     // 0..360, 0=North
+    let lastMWAzDeg = null;        // current computed milky way az
+    let orientationHandler = null; // reference for remove
+
+    function updateCompassPanelUI(){
+      switchCompass.classList.toggle('on', compassEnabled);
+      switchCompass.setAttribute('aria-checked', compassEnabled ? 'true' : 'false');
+
+      headingText.textContent = (lastHeadingDeg == null) ? "--°" : `${Math.round(lastHeadingDeg)}°`;
+      if(lastHeadingDeg == null || lastMWAzDeg == null){
+        turnText.textContent = "--";
+      } else {
+        const d = signedDeltaDeg(lastMWAzDeg, lastHeadingDeg); // + right, - left
+        const abs = Math.round(Math.abs(d));
+        if(abs < 5) turnText.textContent = "정면 ✅";
+        else turnText.textContent = (d > 0) ? `오른쪽 ${abs}°` : `왼쪽 ${abs}°`;
+      }
+
+      if(!compassEnabled) {
+        compassStatus.textContent = "OFF";
+        compassStatus.style.color = "#aaa";
+      } else {
+        compassStatus.textContent = (lastHeadingDeg == null)
+          ? "ON (센서 대기 중...)"
+          : "ON (내비게이션처럼 안내 중)";
+        compassStatus.style.color = "#0df";
+      }
+    }
+
+    function getScreenOrientationAngle(){
+      // 0, 90, 180, 270
+      const so = screen.orientation && typeof screen.orientation.angle === 'number' ? screen.orientation.angle : null;
+      if(so != null) return so;
+      // fallback
+      const w = window.orientation;
+      if(typeof w === 'number') return w;
+      return 0;
+    }
+
+    function headingFromDeviceOrientationEvent(e){
+      // Prefer iOS webkitCompassHeading if exists
+      if(typeof e.webkitCompassHeading === 'number') {
+        // already 0=N
+        return norm360(e.webkitCompassHeading);
+      }
+
+      // Generic: use alpha (0..360, 0=North?) depends; use "360 - alpha" approach
+      // Then adjust by screen orientation.
+      if(typeof e.alpha !== 'number') return null;
+
+      const alpha = e.alpha; // 0..360
+      let heading = 360 - alpha;
+
+      const screenAngle = getScreenOrientationAngle();
+      heading = heading + screenAngle;
+
+      return norm360(heading);
+    }
+
+    async function enableCompass(){
+      // Only meaningful on devices with sensors; on PC it will likely stay unavailable.
+      compassEnabled = true;
+      lastHeadingDeg = null;
+
+      // iOS permission gate
+      try{
+        if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
+          const res = await DeviceOrientationEvent.requestPermission();
+          if(res !== 'granted'){
+            compassEnabled = false;
+            compassStatus.textContent = "권한 거부됨 (iOS 설정/권한 확인)";
+            compassStatus.style.color = "#f55";
+            updateCompassPanelUI();
+            return;
+          }
+        }
+      }catch(err){
+        compassEnabled = false;
+        compassStatus.textContent = "센서 권한 요청 실패";
+        compassStatus.style.color = "#f55";
+        updateCompassPanelUI();
+        return;
+      }
+
+      // Start listener
+      orientationHandler = (e) => {
+        const h = headingFromDeviceOrientationEvent(e);
+        if(h == null) return;
+
+        // Light smoothing (avoid jitter)
+        if(lastHeadingDeg == null){
+          lastHeadingDeg = h;
+        } else {
+          const d = signedDeltaDeg(h, lastHeadingDeg);
+          lastHeadingDeg = norm360(lastHeadingDeg + d * 0.25);
+        }
+
+        updateCompassPanelUI();
+        // Update popup nav arrow if open
+        updatePopupNavIfAny();
+      };
+
+      window.addEventListener('deviceorientation', orientationHandler, true);
+      updateCompassPanelUI();
+    }
+
+    function disableCompass(){
+      compassEnabled = false;
+      if(orientationHandler){
+        window.removeEventListener('deviceorientation', orientationHandler, true);
+        orientationHandler = null;
+      }
+      lastHeadingDeg = null;
+      updateCompassPanelUI();
+      updatePopupNavIfAny();
+    }
+
+    async function toggleCompass(){
+      if(compassEnabled) disableCompass();
+      else await enableCompass();
+    }
+
+    switchCompass.addEventListener('click', toggleCompass);
+    switchCompass.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCompass(); }
+    });
+    updateCompassPanelUI();
+
+    // =========================
+    // Astro logic
+    // =========================
     function getGalacticCorePosition(date, lat, lng) {
       const RA = 266.4168, Dec = -29.0078, rad = Math.PI / 180;
       const jd = (date.getTime() / 86400000) + 2440587.5;
@@ -794,13 +1141,13 @@
 
       const HA_rad = HA * rad, Dec_rad = Dec * rad, Lat_rad = lat * rad;
       const sinAlt = Math.sin(Dec_rad) * Math.sin(Lat_rad) + Math.cos(Dec_rad) * Math.cos(Lat_rad) * Math.cos(HA_rad);
-      const sinAltC = Math.max(-1, Math.min(1, sinAlt));
+      const sinAltC = clamp(sinAlt, -1, 1);
       const altRad = Math.asin(sinAltC);
       const alt = altRad / rad;
       const cosAlt = Math.cos(altRad);
 
       let cosAz = (Math.sin(Dec_rad) - Math.sin(Lat_rad) * sinAltC) / (Math.cos(Lat_rad) * (cosAlt || 1e-9));
-      cosAz = Math.max(-1, Math.min(1, cosAz));
+      cosAz = clamp(cosAz, -1, 1);
       let az = Math.acos(cosAz) / rad;
       if (Math.sin(HA_rad) > 0) az = 360 - az;
       return { altitude: alt, azimuth: az };
@@ -856,28 +1203,165 @@
 
       let isSafe = true, statusColor = "", statusText = "";
       if (distance < 15) { isSafe = false; statusColor = "#f55"; statusText = `🔴 도심 내부 (전방위 광해)`; }
-      else if (distance < 65 && angleDiff < 35) { isSafe = false; statusColor = "#f55"; statusText = `🔴 코어 방향 거대 광해 (빛그물)`; }
-      else if (distance < 90 && angleDiff < 45) { isSafe = true; statusColor = "#fa0"; statusText = `🟡 지평선 광해 간섭 주의`; }
-      else { isSafe = true; statusColor = "#0df"; statusText = `🟢 코어 방향 지평선 어두움`; }
+      else if (distance < 65 && angleDiff < 35) { isSafe = false; statusColor = "#f55"; statusText = `🔴 코어 방향 거대 광해`; }
+      else if (distance < 90 && angleDiff < 45) { isSafe = true; statusColor = "#fa0"; statusText = `🟡 지평선 광해 주의`; }
+      else { isSafe = true; statusColor = "#0df"; statusText = `🟢 코어 방향 어두움`; }
 
       const bortleClass = distance < 15 ? 8 : (distance < 30 ? 6 : (distance < 50 ? 4 : (distance < 80 ? 3 : 2)));
       return { isSafe, statusColor, statusText, bortleClass, angleDiff, distance, bearingToSeoul };
     }
 
-    function isWithinWeatherWindow(dateStr){
-      const sel = new Date(dateStr);
-      const diff = daysBetween(getToday(), sel);
-      return diff >= 0 && diff <= 14;
+    function calcVisibilityScore({ coreAltDeg, moonEval, cloudEval, lpEval }){
+      const alt = clamp(coreAltDeg, 0, 90);
+      let altScore = 0;
+      if(alt <= 0) altScore = 0;
+      else if(alt < 15) altScore = (alt / 15) * 70;
+      else if(alt < 30) altScore = 70 + ((alt - 15) / 15) * 15;
+      else if(alt < 45) altScore = 85 + ((alt - 30) / 15) * 10;
+      else altScore = 95 + Math.min(5, (alt - 45) / 45 * 5);
+
+      let penalty = 0;
+      if(!moonEval.isSafe){
+        penalty += (moonEval.timelineColor === "#f00") ? 45 : 25;
+      }
+      if(cloudEval){
+        if(!cloudEval.isSafe) penalty += 40;
+        else if(cloudEval.statusColor === "#fa0") penalty += 12;
+      } else {
+        penalty += 8;
+      }
+      if(!lpEval.isSafe){
+        penalty += (lpEval.statusColor === "#f55") ? 28 : 12;
+      }
+
+      let score = altScore - penalty;
+      return Math.round(clamp(score, 0, 100));
+    }
+    function scoreToLabel(score){
+      if(score >= 85) return { txt:"S급 선명 (추천)", col:"#0f0" };
+      if(score >= 70) return { txt:"A급 (괜찮음)", col:"#0df" };
+      if(score >= 50) return { txt:"B급 (보정 각오)", col:"#fd0" };
+      if(score >= 30) return { txt:"C급 (도전)", col:"#fa0" };
+      return { txt:"D급 (비추)", col:"#f55" };
     }
 
-    function validateSpots(spots){
-      const bad = spots.filter(s => typeof s.lat !== 'number' || typeof s.lng !== 'number');
-      if (bad.length) {
-        console.warn("Invalid candidateSpots:", bad);
-        return false;
-      }
-      return true;
+    // =========================
+    // Popup compass SVG (정중앙 회전)
+    // - arrow rotates around center (cx=32, cy=32)
+    // - We keep two arrows:
+    //    1) MW absolute direction arrow (purple)
+    //    2) NAV arrow (cyan) = where to turn based on sensor heading (if enabled)
+    // =========================
+    function buildCompassSvgHtml(idPrefix, mwAzDeg){
+      // IDs must be unique per popup
+      const mwArrowId = `${idPrefix}-mwArrow`;
+      const navArrowId = `${idPrefix}-navArrow`;
+      const navTextId = `${idPrefix}-navText`;
+
+      // Initial nav arrow points up; we'll rotate later by JS if sensor is ON.
+      return `
+        <div class="card" style="margin-top:10px;">
+          <div class="row" style="align-items:flex-start;">
+            <div style="flex:0 0 76px;">
+              <svg width="76" height="76" viewBox="0 0 64 64" aria-label="나침반" style="display:block;">
+                <defs>
+                  <filter id="${idPrefix}-glow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur stdDeviation="2.2" result="blur"/>
+                    <feMerge>
+                      <feMergeNode in="blur"/>
+                      <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                  </filter>
+                </defs>
+
+                <circle cx="32" cy="32" r="30" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
+
+                <text x="32" y="12" text-anchor="middle" font-size="9" fill="#bbb" font-weight="800">N</text>
+                <text x="54" y="35" text-anchor="middle" font-size="9" fill="#bbb" font-weight="800">E</text>
+                <text x="32" y="58" text-anchor="middle" font-size="9" fill="#bbb" font-weight="800">S</text>
+                <text x="10" y="35" text-anchor="middle" font-size="9" fill="#bbb" font-weight="800">W</text>
+
+                <!-- MW arrow (absolute azimuth) -->
+                <g id="${mwArrowId}" transform="rotate(${mwAzDeg} 32 32)" filter="url(#${idPrefix}-glow)">
+                  <path d="M32 10 L38 30 L32 26 L26 30 Z" fill="#ff00ff"/>
+                  <circle cx="32" cy="32" r="2.4" fill="#ff00ff"/>
+                </g>
+
+                <!-- NAV arrow (relative turn) -->
+                <g id="${navArrowId}" transform="rotate(0 32 32)" filter="url(#${idPrefix}-glow)" opacity="0.0">
+                  <path d="M32 12 L36 26 L32 23 L28 26 Z" fill="#0df"/>
+                  <circle cx="32" cy="32" r="2.2" fill="#0df"/>
+                </g>
+              </svg>
+            </div>
+
+            <div style="flex:1; min-width:0;">
+              <div style="font-weight:1000; font-size:14px; color:#fff;">
+                🧭 은하수 방향:
+                <span style="color:#ff77ff">${azToCompassKR(mwAzDeg)}</span>
+                <span style="color:#aaa; font-weight:700;">(${Math.round(norm360(mwAzDeg))}°)</span>
+              </div>
+              <div class="muted" style="margin-top:6px;">
+                보라색 화살표/점선 쪽이 <b>코어 방향</b>입니다.
+              </div>
+
+              <div class="card" style="padding:8px; margin-top:10px;">
+                <div class="row-between">
+                  <div class="tiny">실시간 안내</div>
+                  <div class="tiny" id="${navTextId}" style="color:#0df; font-weight:900;">OFF</div>
+                </div>
+                <div class="tiny" style="margin-top:4px; color:#888;">
+                  ON이면 “내 헤딩” 기준으로 좌/우 회전 안내가 떠요.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
     }
+
+    function applyNavToPopup(idPrefix, mwAzDeg){
+      const navArrow = document.getElementById(`${idPrefix}-navArrow`);
+      const navText = document.getElementById(`${idPrefix}-navText`);
+      if(!navArrow || !navText) return;
+
+      if(!compassEnabled || lastHeadingDeg == null){
+        navArrow.setAttribute("opacity", "0.0");
+        navArrow.setAttribute("transform", "rotate(0 32 32)");
+        navText.textContent = "OFF";
+        navText.style.color = "#aaa";
+        return;
+      }
+
+      // NAV arrow shows where to turn (relative)
+      const delta = signedDeltaDeg(mwAzDeg, lastHeadingDeg); // +right, -left
+      const abs = Math.round(Math.abs(delta));
+      navArrow.setAttribute("opacity", "1.0");
+
+      // rotate nav arrow by delta around center (points where MW is relative to current heading)
+      navArrow.setAttribute("transform", `rotate(${delta} 32 32)`);
+
+      if(abs < 5){
+        navText.textContent = "정면 ✅";
+        navText.style.color = "#0f0";
+      } else {
+        navText.textContent = (delta > 0) ? `오른쪽 ${abs}°` : `왼쪽 ${abs}°`;
+        navText.style.color = "#0df";
+      }
+    }
+
+    // Called whenever sensor updates or popup refreshed
+    function updatePopupNavIfAny(){
+      if(window.__lastPopupCompassPrefix && lastMWAzDeg != null){
+        applyNavToPopup(window.__lastPopupCompassPrefix, lastMWAzDeg);
+      }
+    }
+
+    // =========================
+    // Analyze / popup logic
+    // =========================
+    let analyzeSeq = 0;
+    let marker = null, coreLine = null, currentLat = null, currentLng = null;
 
     function findHourlyIndex(hourlyTimes, dateStr, hour){
       if (!Array.isArray(hourlyTimes)) return -1;
@@ -885,38 +1369,10 @@
       return hourlyTimes.indexOf(target);
     }
 
-    function updateWeatherModeUI(){
-      const dateStr = document.getElementById('obs-date').value;
-      const badge = document.getElementById('mode-badge');
-      const btn = document.getElementById('btn-simulate');
-      const within = isWithinWeatherWindow(dateStr);
-
-      if(within){
-        badge.textContent = "MODE: Weather ON";
-        badge.classList.remove('mode-no-weather');
-        badge.classList.add('mode-weather');
-        btn.disabled = false;
-        btn.textContent = "🚀 선택한 날짜의 최적지 찾기";
-      } else {
-        badge.textContent = "MODE: Weather OFF (14일 이후)";
-        badge.classList.remove('mode-weather');
-        badge.classList.add('mode-no-weather');
-        btn.disabled = true;
-        btn.textContent = "🌙 14일 이후: 날씨 없이 분석";
-        const msg = document.getElementById('simulate-msg');
-        msg.style.display = 'block';
-        msg.style.color = '#fd0';
-        msg.innerText = '⚠️ 선택 날짜가 14일 이후라 전국 최적지 시뮬레이션은 비활성화됩니다.';
-      }
-    }
-
-    let analyzeSeq = 0;
-    let marker = null, coreLine = null, currentLat = null, currentLng = null;
-
     async function analyzeData(lat, lng, spotName=null){
       const mySeq = ++analyzeSeq;
-
       currentLat = lat; currentLng = lng;
+
       if (marker) map.removeLayer(marker);
       if (coreLine) map.removeLayer(coreLine);
 
@@ -932,7 +1388,51 @@
       const timelineStart = new Date(dateStr);
       timelineStart.setHours(18,0,0,0);
 
-      let timelineBarHtml = '<div style="display:flex; width:100%; height:16px; border-radius:4px; overflow:hidden; margin:8px 0; border: 1px solid #555;">';
+      // --- weather hourly for the day
+      const withinWeather = isWithinWeatherWindow(dateStr);
+      let weatherHourly = null;
+      let isWeatherAvailable = false;
+      let weatherWarningHtml = "";
+
+      if(withinWeather){
+        try{
+          const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&hourly=cloudcover,cloudcover_low,cloudcover_mid,cloudcover_high,temperature_2m,dewpoint_2m,windspeed_10m&wind_speed_unit=ms&timezone=auto&start_date=${dateStr}&end_date=${dateStr}`;
+          const response = await fetch(weatherUrl);
+          if(response.ok){
+            const weatherData = await response.json();
+            if(weatherData.hourly && weatherData.hourly.time && weatherData.hourly.cloudcover){
+              weatherHourly = weatherData.hourly;
+              isWeatherAvailable = true;
+
+              const idx = findHourlyIndex(weatherHourly.time, dateStr, selectedHour);
+              if(idx >= 0){
+                const temp = weatherHourly.temperature_2m[idx];
+                const dew  = weatherHourly.dewpoint_2m[idx];
+                const wind = weatherHourly.windspeed_10m[idx];
+                weatherWarningHtml = `
+                  <b>🌡️ 기온/이슬점:</b> ${temp}°C / ${dew}°C &nbsp;👉 ${(temp - dew) <= 2 ? '<span class="warning-text">💧 결로 주의</span>' : '<span class="safe-text">✅ 안전</span>'}<br>
+                  <b>💨 풍속:</b> ${wind}m/s &nbsp;👉 ${wind >= 5 ? '<span class="warning-text">⚠️ 강풍 주의</span>' : '<span class="safe-text">✅ 안전</span>'}<br>
+                `;
+              }
+            }
+          }
+        } catch(e){ console.log("기상 데이터 로드 실패", e); }
+      }
+
+      function getCloudEvalForDate(d){
+        if(!isWeatherAvailable || !weatherHourly) return null;
+        const h = d.getHours();
+        const idx = findHourlyIndex(weatherHourly.time, dateStr, h);
+        if(idx < 0) return null;
+        const cTotal = weatherHourly.cloudcover[idx];
+        const cLow   = weatherHourly.cloudcover_low[idx];
+        const cMid   = weatherHourly.cloudcover_mid[idx];
+        const cHigh  = weatherHourly.cloudcover_high[idx];
+        return { eval: evaluateCloudImpact(cLow, cMid, cHigh, cTotal), cTotal, cLow, cMid, cHigh };
+      }
+
+      // --- timeline bar
+      let timelineBarHtml = '<div style="display:flex; width:100%; height:16px; border-radius:6px; overflow:hidden; margin:8px 0; border: 1px solid #555;">';
       let timelineLabelHtml = '<div style="display:flex; justify-content:space-between; color:#888; font-size:10px; padding:0 2px;">';
 
       for (let i=0;i<48;i++){
@@ -947,21 +1447,27 @@
         timelineBarHtml += `<div style="flex:1; background:${bg};"></div>`;
       }
       timelineBarHtml += '</div>';
-
       for (let i=0;i<=12;i+=3){
         const tHour = (18 + i) % 24;
         timelineLabelHtml += `<span>${pad2(tHour)}h</span>`;
       }
       timelineLabelHtml += '</div>';
 
+      // --- core/gold windows + best visibility time/window
       const simStartTime = new Date(dateStr); simStartTime.setHours(12,0,0,0);
       const simEndTime = new Date(simStartTime.getTime() + 24*60*60*1000);
-      let coreStart=null, coreEnd=null, goldStart=null, goldEnd=null;
+      let coreStart=null, coreEnd=null;
+      let goldStart=null, goldEnd=null;
+
+      let bestVTime = null;
+      let bestVScore = -1;
+      let bestWindowStart = null, bestWindowEnd = null;
 
       for(let t=simStartTime.getTime(); t<simEndTime.getTime(); t += 10*60000){
         const tempD = new Date(t);
         const gc = getGalacticCorePosition(tempD, lat, lng);
         const moonEval = evaluateMoonImpact(tempD, lat, lng, gc.azimuth);
+
         if (gc.altitude > 0){
           if(!coreStart) coreStart = new Date(t);
           coreEnd = new Date(t);
@@ -972,66 +1478,101 @@
         }
       }
 
+      const scanStart = new Date(dateStr); scanStart.setHours(18,0,0,0);
+      const scanEnd = new Date(scanStart.getTime() + 12*60*60*1000);
+
+      for(let t=scanStart.getTime(); t<=scanEnd.getTime(); t += 20*60000){
+        const d = new Date(t);
+        const gc = getGalacticCorePosition(d, lat, lng);
+        const moonEval = evaluateMoonImpact(d, lat, lng, gc.azimuth);
+        const lpEval = evaluateDirectionalLightPollution(lat, lng, gc.azimuth);
+        const cloudPack = getCloudEvalForDate(d);
+        const cloudEval = cloudPack ? cloudPack.eval : null;
+
+        const score = calcVisibilityScore({ coreAltDeg: gc.altitude, moonEval, cloudEval, lpEval });
+        if(gc.altitude > 0 && score > bestVScore){
+          bestVScore = score;
+          bestVTime = new Date(d);
+        }
+      }
+
+      if(bestVTime && bestVScore >= 0){
+        const thresholdScore = Math.max(0, Math.round(bestVScore * 0.85));
+        let inSeg = false;
+
+        for(let t=scanStart.getTime(); t<=scanEnd.getTime(); t += 20*60000){
+          const d = new Date(t);
+          const gc = getGalacticCorePosition(d, lat, lng);
+          if(gc.altitude < 15) { inSeg = false; continue; }
+
+          const moonEval = evaluateMoonImpact(d, lat, lng, gc.azimuth);
+          const lpEval = evaluateDirectionalLightPollution(lat, lng, gc.azimuth);
+          const cloudPack = getCloudEvalForDate(d);
+          const cloudEval = cloudPack ? cloudPack.eval : null;
+
+          const score = calcVisibilityScore({ coreAltDeg: gc.altitude, moonEval, cloudEval, lpEval });
+          if(score >= thresholdScore){
+            if(!inSeg){
+              inSeg = true;
+              if(!bestWindowStart) bestWindowStart = new Date(d);
+            }
+            bestWindowEnd = new Date(d);
+          } else {
+            inSeg = false;
+          }
+        }
+      }
+
       const fmtTime = (d)=> d ? `${pad2(d.getHours())}:${pad2(d.getMinutes())}` : null;
       const coreWinText = coreStart ? `${fmtTime(coreStart)} ~ ${fmtTime(coreEnd)}` : "시즌 아님";
       const goldWinText = goldStart ? `${fmtTime(goldStart)} ~ ${fmtTime(goldEnd)}` : "조건 미달";
 
+      // --- selected time status
       const gcPos = getGalacticCorePosition(selectedDate, lat, lng);
       const moonEvalCurrent = evaluateMoonImpact(selectedDate, lat, lng, gcPos.azimuth);
       const lpEval = evaluateDirectionalLightPollution(lat, lng, gcPos.azimuth);
 
-      if (gcPos.altitude > 0){
-        const dist = 0.5;
-        const endLat = lat + dist * Math.cos(gcPos.azimuth * Math.PI / 180);
-        const endLng = lng + dist * Math.sin(gcPos.azimuth * Math.PI / 180) / Math.cos(lat * Math.PI / 180);
-        coreLine = L.polyline([[lat,lng],[endLat,endLng]], { color:'#ff00ff', weight:4, dashArray:'5,10', opacity:0.8 }).addTo(map);
+      let cloudEvalCurrent = null;
+      let cTotal=0, cLow=0, cMid=0, cHigh=0;
+      if(isWeatherAvailable && weatherHourly){
+        const idx = findHourlyIndex(weatherHourly.time, dateStr, selectedHour);
+        if(idx >= 0){
+          cTotal = weatherHourly.cloudcover[idx];
+          cLow   = weatherHourly.cloudcover_low[idx];
+          cMid   = weatherHourly.cloudcover_mid[idx];
+          cHigh  = weatherHourly.cloudcover_high[idx];
+          cloudEvalCurrent = evaluateCloudImpact(cLow, cMid, cHigh, cTotal);
+        }
       }
 
-      const withinWeather = isWithinWeatherWindow(dateStr);
-      let isWeatherAvailable = false, cTotal=0, cLow=0, cMid=0, cHigh=0;
-      let cloudEval = { isSafe:false, statusColor:"#aaa", statusText:"알 수 없음" };
-      let weatherWarningHtml = "";
+      const visibilityScore = calcVisibilityScore({
+        coreAltDeg: gcPos.altitude,
+        moonEval: moonEvalCurrent,
+        cloudEval: cloudEvalCurrent,
+        lpEval
+      });
+      const vLabel = scoreToLabel(visibilityScore);
 
-      if(withinWeather){
-        try{
-          const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&hourly=cloudcover,cloudcover_low,cloudcover_mid,cloudcover_high,temperature_2m,dewpoint_2m,windspeed_10m&wind_speed_unit=ms&timezone=auto&start_date=${dateStr}&end_date=${dateStr}`;
-          const response = await fetch(weatherUrl);
-          if(response.ok){
-            const weatherData = await response.json();
-            if(weatherData.hourly && weatherData.hourly.cloudcover && weatherData.hourly.time){
-              const idx = findHourlyIndex(weatherData.hourly.time, dateStr, selectedHour);
-              if (idx >= 0){
-                cTotal = weatherData.hourly.cloudcover[idx];
-                cLow   = weatherData.hourly.cloudcover_low[idx];
-                cMid   = weatherData.hourly.cloudcover_mid[idx];
-                cHigh  = weatherData.hourly.cloudcover_high[idx];
-                cloudEval = evaluateCloudImpact(cLow, cMid, cHigh, cTotal);
-                isWeatherAvailable = true;
+      const az = norm360(gcPos.azimuth);
+      lastMWAzDeg = az; // for sensor guidance (panel + popup)
 
-                const temp = weatherData.hourly.temperature_2m[idx];
-                const dew  = weatherData.hourly.dewpoint_2m[idx];
-                const wind = weatherData.hourly.windspeed_10m[idx];
-
-                weatherWarningHtml = `
-                  <b>🌡️ 기온/이슬점:</b> ${temp}°C / ${dew}°C &nbsp;👉 ${(temp - dew) <= 2 ? '<span class="warning-text">💧 결로 주의</span>' : '<span class="safe-text">✅ 안전</span>'}<br>
-                  <b>💨 풍속:</b> ${wind}m/s &nbsp;👉 ${wind >= 5 ? '<span class="warning-text">⚠️ 강풍 주의</span>' : '<span class="safe-text">✅ 안전</span>'}<br>
-                `;
-              } else {
-                weatherWarningHtml = `<span class="warning-text">⚠️ 시간 매칭 실패(예보 시간표 불일치)</span><br>`;
-              }
-            }
-          }
-        } catch(e){ console.log("기상 데이터 로드 실패", e); }
+      // core direction line
+      if (gcPos.altitude > 0){
+        const dist = 0.5;
+        const endLat = lat + dist * Math.cos(az * Math.PI / 180);
+        const endLng = lng + dist * Math.sin(az * Math.PI / 180) / Math.cos(lat * Math.PI / 180);
+        coreLine = L.polyline([[lat,lng],[endLat,endLng]], { color:'#ff00ff', weight:4, dashArray:'5,10', opacity:0.8 }).addTo(map);
       }
 
       if (mySeq !== analyzeSeq) return;
 
+      // GO/NO-GO
       const isCoreSafe = (gcPos.altitude >= 10);
       let goTitle="", goBg="", goBorder="";
-      if(isWeatherAvailable){
-        if(moonEvalCurrent.isSafe && cloudEval.isSafe && isCoreSafe && lpEval.isSafe){
+      if(isWeatherAvailable && cloudEvalCurrent){
+        if(moonEvalCurrent.isSafe && cloudEvalCurrent.isSafe && isCoreSafe && lpEval.isSafe){
           goTitle="🟢 무조건 GO! (짐 싸세요)"; goBg="rgba(0,255,100,0.2)"; goBorder="#0f0";
-        } else if(!cloudEval.isSafe || (!moonEvalCurrent.isSafe && moonEvalCurrent.statusColor==="#f55") || (!lpEval.isSafe && lpEval.statusColor==="#f55")){
+        } else if(!cloudEvalCurrent.isSafe || (!moonEvalCurrent.isSafe && moonEvalCurrent.statusColor==="#f55") || (!lpEval.isSafe && lpEval.statusColor==="#f55")){
           goTitle="🔴 NO-GO (집에서 보정하세요)"; goBg="rgba(255,50,50,0.2)"; goBorder="#f55";
         } else {
           goTitle="🟡 HOLD (부분적 간섭 / 대기)"; goBg="rgba(255,200,0,0.2)"; goBorder="#fa0";
@@ -1044,26 +1585,62 @@
         }
       }
 
-      const rCloud = !isWeatherAvailable ? `알 수 없음` : `<span><b style="color:${cloudEval.statusColor}">${cloudEval.statusText}</b> <span class="cloud-detail">(상${cHigh}%)</span></span>`;
+      const rCloud = (!cloudEvalCurrent)
+        ? `알 수 없음`
+        : `<span><b style="color:${cloudEvalCurrent.statusColor}">${cloudEvalCurrent.statusText}</b> <span class="cloud-detail">(상${cHigh}%)</span></span>`;
+
       const rMoon = `<span><span style="font-size:16px; vertical-align:middle; margin-right:4px;">${moonEvalCurrent.moonEmoji}</span><b style="color:${moonEvalCurrent.statusColor}">${moonEvalCurrent.statusText}</b></span>`;
       const rCore = isCoreSafe ? `<span style="color:#0df">고도 ${Math.round(gcPos.altitude)}°</span>` : `<span style="color:#f55">고도 ${Math.round(gcPos.altitude)}° (낮음)</span>`;
       const rLP   = `<span><b style="color:${lpEval.statusColor}">${lpEval.statusText}</b></span>`;
-      const titleHtml = spotName ? `<b>📍 ${spotName}</b><br>` : `<b>📍 관측 후보지</b> (${lat.toFixed(3)}, ${lng.toFixed(3)})<br>`;
-      const safeSpotName = spotName ? spotName.replace(/'/g, "\\'") : '';
+      const titleHtml = spotName ? `<b>📍 ${escapeHtml(spotName)}</b><br>` : `<b>📍 관측 후보지</b> (${lat.toFixed(3)}, ${lng.toFixed(3)})<br>`;
+
+      // Compass SVG (center-rotation fixed)
+      const compassPrefix = `cmp${Date.now()}${Math.floor(Math.random()*1000)}`;
+      window.__lastPopupCompassPrefix = compassPrefix;
+
+      const compassHtml = buildCompassSvgHtml(compassPrefix, az);
+
+      const bestTimeText = bestVTime ? `${fmtTime(bestVTime)} (점수 ${bestVScore}/100)` : "계산 불가";
+      const bestWindowText = (bestWindowStart && bestWindowEnd)
+        ? `${fmtTime(bestWindowStart)} ~ ${fmtTime(bestWindowEnd)}`
+        : "조건 미달";
+
+      const visibilityBox = `
+        <div class="mw-window-box" style="margin-top:10px;">
+          <div class="row-between">
+            <div style="font-size:15px; font-weight:1000; color:#fff;">✨ 은하수 선명도</div>
+            <div style="font-weight:1000; color:${vLabel.col};">${visibilityScore}/100</div>
+          </div>
+          <div style="margin-top:4px; color:${vLabel.col}; font-weight:1000;">${vLabel.txt}</div>
+          <div style="margin-top:8px; font-size:12px; color:#ddd; line-height:1.45;">
+            <b>추천 베스트 타임:</b> <span style="color:#0df; font-weight:1000;">${bestTimeText}</span><br>
+            <b>추천 시간대(윈도우):</b> <span style="color:#fd0; font-weight:1000;">${bestWindowText}</span>
+          </div>
+          <div class="muted" style="margin-top:8px;">
+            점수 = 코어 고도 + 달빛 + 구름 + 광해방향을 초보자용으로 합친 값입니다.
+          </div>
+        </div>
+      `;
 
       let popupText = `
         <div style="font-size: 13px; line-height: 1.6; padding-bottom:5px;">
           ${titleHtml}
           <span style="color:#aaa; font-size:11px;">기준 시간: ${dateStr} ${pad2(selectedHour)}:00</span><br>
-          <div class="gonogo-box" style="background:${goBg}; border:1px solid ${goBorder}; margin-top:8px;">
+
+          ${compassHtml}
+          ${visibilityBox}
+          ${getFovSummaryHtml()}
+
+          <div class="gonogo-box" style="background:${goBg}; border:1px solid ${goBorder}; margin-top:10px;">
             <div class="gonogo-title" style="color:${goBorder}">${goTitle}</div>
-            <div class="gonogo-item"><span>🌙 <b>달 모양:</b></span> ${rMoon}</div>
+            <div class="gonogo-item"><span>🌙 <b>달:</b></span> ${rMoon}</div>
             <div class="gonogo-item"><span>☁️ <b>구름:</b></span> ${rCloud}</div>
-            <div class="gonogo-item"><span>🌌 <b>코어:</b></span> ${rCore}</div>
+            <div class="gonogo-item"><span>🌌 <b>코어 고도:</b></span> ${rCore}</div>
             <div class="gonogo-item"><span>💡 <b>광해방향:</b></span> ${rLP}</div>
           </div>
+
           <div class="mw-window-box">
-            <div style="font-size:15px; font-weight:bold; color:#fff; text-align:center; margin-bottom:6px;">🌌 Milky Way Window</div>
+            <div style="font-size:15px; font-weight:1000; color:#fff; text-align:center; margin-bottom:6px;">🌌 Milky Way Window</div>
             ${timelineBarHtml}
             ${timelineLabelHtml}
             <div class="timeline-legend">
@@ -1071,32 +1648,32 @@
               <div class="legend-item"><div class="legend-box" style="background:#635;"></div>달 씻김</div>
               <div class="legend-item"><div class="legend-box" style="background:#c60;"></div>저고도달</div>
               <div class="legend-item"><div class="legend-box" style="background:#f00;"></div>달 겹침</div>
-              <div class="legend-item"><div class="legend-box" style="background:#fd0;"></div><b style="color:#fd0;">실전(15°↑)</b></div>
+              <div class="legend-item"><div class="legend-box" style="background:#fd0;"></div><b style="color:#fd0;">유리(고도15°↑)</b></div>
             </div>
             <hr style="border-top:1px dashed #555; margin:10px 0;">
             <div style="font-size:12.5px; text-align:center;">
               코어 지평선 위: <span style="color:#0df">${coreWinText}</span><br>
-              <span style="font-size:14px;">✨ <b>실전 골든 윈도우:</b> <span style="color:#fd0; font-weight:900;">${goldWinText}</span></span>
+              <span style="font-size:14px;">⭐ <b>추천(달 영향 적음):</b> <span style="color:#fd0; font-weight:1000;">${goldWinText}</span></span>
             </div>
           </div>
       `;
-      if (isWeatherAvailable || weatherWarningHtml) popupText += `${weatherWarningHtml}`;
+
+      if (isWeatherAvailable && weatherWarningHtml) popupText += `${weatherWarningHtml}`;
 
       popupText += `
-        <button class="btn-capture" onclick="capturePopup(event, this)">
-          📸 결과 캡처하여 저장하기
-        </button>
-        <button class="btn-favorite" onclick="saveFavorite(event, ${lat}, ${lng}, '${safeSpotName}')">
-          ⭐ 이 장소 즐겨찾기에 저장
-        </button>
+        <button class="btn-capture" onclick="capturePopup(event, this)">📸 결과 캡처하여 저장하기</button>
+        <button class="btn-favorite" onclick="saveFavorite(event, ${lat}, ${lng}, '${(spotName||"").replace(/'/g, "\\'")}')">⭐ 이 장소 즐겨찾기에 저장</button>
       </div>`;
 
       marker.bindPopup(popupText).openPopup();
+
+      // Apply sensor-based nav to popup compass immediately
+      applyNavToPopup(compassPrefix, az);
+      updateCompassPanelUI();
     }
 
     window.capturePopup = function(ev, btnElement) {
       if (ev) { ev.preventDefault(); ev.stopPropagation(); }
-
       const popupEl = document.querySelector('.leaflet-popup');
       if (!popupEl) return;
 
@@ -1127,6 +1704,9 @@
       });
     };
 
+    // =========================
+    // Best date (new moon-ish)
+    // =========================
     function calculateBestDate(){
       let bestDate=null, minFraction=1.0, bestEmoji="🌑";
       for(let i=0;i<=30;i++){
@@ -1143,12 +1723,12 @@
       if(bestDate){
         const bY = bestDate.getFullYear(), bM = pad2(bestDate.getMonth()+1), bD = pad2(bestDate.getDate());
         const bestStr = `${bY}-${bM}-${bD}`;
-        document.getElementById('best-date-box').innerHTML =
-          `<div style="font-size:16px; font-weight:bold; color:#0df;">${bY}년 ${bM}월 ${bD}일</div>
-           <div style="font-size:13px; color:#aaa; margin-top:4px;">
-             ${bestEmoji} 예상 달빛: ${Math.round(minFraction*100)}%
-           </div>
-           <div style="font-size:11px; color:#777; margin-top:4px;">클릭하여 날짜 적용</div>`;
+        document.getElementById('best-date-box').innerHTML = `
+          <div style="font-size:16px; font-weight:1000; color:#0df;">${bY}년 ${bM}월 ${bD}일</div>
+          <div style="font-size:13px; color:#aaa; margin-top:4px;">${bestEmoji} 예상 달빛: ${Math.round(minFraction*100)}%</div>
+          <div class="tiny" style="margin-top:6px; color:#777;">클릭하여 날짜 적용</div>
+        `;
+        document.getElementById('best-date-box').style.cursor = "pointer";
         document.getElementById('best-date-box').onclick = function(){
           document.getElementById('obs-date').value = bestStr;
           updateWeatherModeUI();
@@ -1158,6 +1738,9 @@
     }
     calculateBestDate();
 
+    // =========================
+    // Candidate spots simulation (unchanged)
+    // =========================
     const candidateSpots = [
       { name: "연천 당포성 (경기 북부)", lat: 38.013, lng: 126.949 },
       { name: "파주 감악산 부근 (경기 북부)", lat: 37.942, lng: 126.960 },
@@ -1168,7 +1751,6 @@
       { name: "합천 황매산 (경남)", lat: 35.582, lng: 127.975 },
       { name: "부여 사랑나무 (충남)", lat: 36.257, lng: 126.903 }
     ];
-    validateSpots(candidateSpots);
 
     document.getElementById('btn-simulate').addEventListener('click', async function(){
       const btn = this;
@@ -1180,12 +1762,6 @@
       if(!isWithinWeatherWindow(targetDate)){
         msg.style.display='block'; msg.style.color='#fd0';
         msg.innerText='⚠️ 14일 이후는 날씨 기반 시뮬레이션 불가(달/광해/코어만 확인하세요).';
-        return;
-      }
-
-      if(!validateSpots(candidateSpots)){
-        msg.style.display='block'; msg.style.color='#f55';
-        msg.innerText='❌ 후보지 데이터에 오류가 있어 시뮬레이션을 중단합니다. (Console 확인)';
         return;
       }
 
@@ -1249,10 +1825,7 @@
           msg.innerText = `✅ [${bestSpot.name}] ${bestHour}시가 가장 최적입니다!`;
           map.setView([bestSpot.lat, bestSpot.lng], 11);
           analyzeData(bestSpot.lat, bestSpot.lng, bestSpot.name);
-
-          if(window.innerWidth <= 768) {
-            document.getElementById('ui-panel').classList.add('collapsed');
-          }
+          if(window.innerWidth <= 768) document.getElementById('ui-panel').classList.add('collapsed');
         } else {
           msg.style.color = "#f55";
           msg.innerText = "❌ 기상 데이터가 없거나 조건이 맞는 곳이 없습니다.";
@@ -1268,6 +1841,9 @@
       }
     });
 
+    // =========================
+    // UI controls
+    // =========================
     document.getElementById('map-theme').addEventListener('change', function(e){
       map.removeLayer(currentBaseLayer);
       currentBaseLayer = e.target.value === 'dark' ? darkLayer : (e.target.value === 'satellite' ? satelliteLayer : standardLayer);
@@ -1304,6 +1880,7 @@
       if(isWithinWeatherWindow(document.getElementById('obs-date').value)){ m.style.display='none'; }
     });
 
+    // Map click
     map.on('click', function(e){ analyzeData(e.latlng.lat, e.latlng.lng); });
 
     updateWeatherModeUI();
