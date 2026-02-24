@@ -263,8 +263,13 @@
         transform:translateY(0);
         transition:transform 0.28s cubic-bezier(0.4,0,0.2,1);
         padding-bottom:30px;
-        touch-action:none;
+
+        /* ✅ FIX: 모바일 패널 스크롤 허용 */
+        touch-action: pan-y;
       }
+      /* ✅ FIX: 핸들만 드래그 제스처 전용 */
+      .mobile-handle{ touch-action:none; }
+
       #ui-panel.collapsed{
         transform:translateY(calc(100% - 54px));
         overflow:hidden;
@@ -443,6 +448,13 @@
     function pad2(n){ return String(n).padStart(2,'0'); }
     function fmtYMD(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
     function getToday(){ return new Date(); }
+
+    // ✅ FIX: 로컬 기준 날짜 파싱(UTC 하루 밀림 방지)
+    function parseLocalYMD(dateStr){
+      const [y,m,d] = dateStr.split('-').map(Number);
+      return new Date(y, m-1, d); // local 00:00
+    }
+
     function daysBetween(a, b){
       const aa = new Date(a.getFullYear(), a.getMonth(), a.getDate());
       const bb = new Date(b.getFullYear(), b.getMonth(), b.getDate());
@@ -566,14 +578,14 @@
     ).addTo(map);
 
     // =========================
-    // Mobile bottom sheet swipe (tap to open + 25% threshold)
+    // Mobile bottom sheet swipe (tap to open + threshold)  ✅ FIX: 스크롤/드래그 공존
     // =========================
     (function initMobilePanelDrag(){
       const panel  = document.getElementById('ui-panel');
       const handle = document.getElementById('mobile-toggle');
 
       const PEEK = 54;
-      const OPEN_THRESHOLD_RATIO = 0.75; 
+      const OPEN_THRESHOLD_RATIO = 0.75;
       const CLOSE_THRESHOLD_RATIO = 0.18;
       const TOP_DRAG_ZONE = 90;
       const TAP_MOVE_PX = 10;
@@ -585,7 +597,6 @@
       let dragging = false;
 
       let tapStartX = 0, tapStartY = 0, tapActive = false;
-      let globalLock = false;
 
       const isMobile = () => window.innerWidth <= 768;
 
@@ -600,11 +611,9 @@
         if(lock){
           panel.style.overflow = 'hidden';
           panel.style.webkitOverflowScrolling = 'auto';
-          globalLock = true;
         }else{
           panel.style.overflow = '';
           panel.style.webkitOverflowScrolling = 'touch';
-          globalLock = false;
         }
       }
 
@@ -636,9 +645,10 @@
         return (isHandle || withinTopZone(clientY)) && atTop;
       }
 
+      // ✅ FIX: 드래그 중일 때만 preventDefault (스크롤 막힘 제거)
       document.addEventListener('touchmove', (e) => {
         if(!isMobile()) return;
-        if(globalLock && e.cancelable) e.preventDefault();
+        if(dragging && e.cancelable) e.preventDefault();
       }, { passive:false });
 
       function onTouchStart(e){
@@ -909,7 +919,7 @@
     // Weather window UI
     // =========================
     function isWithinWeatherWindow(dateStr){
-      const sel = new Date(dateStr);
+      const sel = parseLocalYMD(dateStr);
       const diff = daysBetween(getToday(), sel);
       return diff >= 0 && diff <= 14;
     }
@@ -925,6 +935,8 @@
         badge.classList.add('mode-weather');
         btn.disabled = false;
         btn.textContent = "🚀 선택한 날짜의 최적지 찾기";
+        const msg = document.getElementById('simulate-msg');
+        msg.style.display = 'none';
       } else {
         badge.textContent = "MODE: Weather OFF (14일 이후)";
         badge.classList.remove('mode-weather');
@@ -1034,6 +1046,7 @@
     let lastHeadingDeg = null;
     let lastMWAzDeg = null;
     let orientationHandler = null;
+    let compassEvtName = 'deviceorientation';
 
     function updateCompassPanelUI(){
       switchCompass.classList.toggle('on', compassEnabled);
@@ -1043,7 +1056,7 @@
       if(lastHeadingDeg == null || lastMWAzDeg == null){
         turnText.textContent = "--";
       } else {
-        const d = signedDeltaDeg(lastMWAzDeg, lastHeadingDeg); 
+        const d = signedDeltaDeg(lastMWAzDeg, lastHeadingDeg);
         const abs = Math.round(Math.abs(d));
         if(abs < 5) turnText.textContent = "정면 ✅";
         else turnText.textContent = (d > 0) ? `오른쪽 ${abs}°` : `왼쪽 ${abs}°`;
@@ -1073,7 +1086,7 @@
         return norm360(e.webkitCompassHeading);
       }
       if(typeof e.alpha !== 'number') return null;
-      const alpha = e.alpha; 
+      const alpha = e.alpha;
       let heading = 360 - alpha;
       const screenAngle = getScreenOrientationAngle();
       heading = heading + screenAngle;
@@ -1083,6 +1096,7 @@
     async function enableCompass(){
       compassEnabled = true;
       lastHeadingDeg = null;
+
       try{
         if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
           const res = await DeviceOrientationEvent.requestPermission();
@@ -1114,14 +1128,17 @@
         updateCompassPanelUI();
         updatePopupNavIfAny();
       };
-      window.addEventListener('deviceorientation', orientationHandler, true);
+
+      // ✅ FIX: absolute 지원 우선
+      compassEvtName = ('ondeviceorientationabsolute' in window) ? 'deviceorientationabsolute' : 'deviceorientation';
+      window.addEventListener(compassEvtName, orientationHandler, true);
       updateCompassPanelUI();
     }
 
     function disableCompass(){
       compassEnabled = false;
       if(orientationHandler){
-        window.removeEventListener('deviceorientation', orientationHandler, true);
+        window.removeEventListener(compassEvtName, orientationHandler, true);
         orientationHandler = null;
       }
       lastHeadingDeg = null;
@@ -1327,7 +1344,7 @@
         return;
       }
 
-      const delta = signedDeltaDeg(mwAzDeg, lastHeadingDeg); 
+      const delta = signedDeltaDeg(mwAzDeg, lastHeadingDeg);
       const abs = Math.round(Math.abs(delta));
       navArrow.setAttribute("opacity", "1.0");
       navArrow.setAttribute("transform", `rotate(${delta} 32 32)`);
@@ -1353,6 +1370,9 @@
     let analyzeSeq = 0;
     let marker = null, coreLine = null, currentLat = null, currentLng = null;
 
+    // ✅ FIX: analyze fetch Abort
+    let analyzeAbort = null;
+
     function findHourlyIndex(hourlyTimes, dateStr, hour){
       if (!Array.isArray(hourlyTimes)) return -1;
       const target = `${dateStr}T${pad2(hour)}:00`;
@@ -1360,6 +1380,11 @@
     }
 
     async function analyzeData(lat, lng, spotName=null){
+      // ✅ 이전 분석 요청 취소
+      if(analyzeAbort) analyzeAbort.abort();
+      analyzeAbort = new AbortController();
+      const { signal } = analyzeAbort;
+
       const mySeq = ++analyzeSeq;
       currentLat = lat; currentLng = lng;
 
@@ -1370,11 +1395,13 @@
       marker.bindPopup("데이터 분석 중... 📡").openPopup();
 
       const dateStr = document.getElementById('obs-date').value;
+      const baseDate = parseLocalYMD(dateStr);
+
       const selectedHour = parseInt(document.getElementById('obs-time').value, 10);
-      const selectedDate = new Date(dateStr);
+      const selectedDate = new Date(baseDate);
       selectedDate.setHours(selectedHour, 0, 0, 0);
 
-      const timelineStart = new Date(dateStr);
+      const timelineStart = new Date(baseDate);
       timelineStart.setHours(18,0,0,0);
 
       // --- weather hourly for the day
@@ -1386,7 +1413,7 @@
       if(withinWeather){
         try{
           const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&hourly=cloudcover,cloudcover_low,cloudcover_mid,cloudcover_high,temperature_2m,dewpoint_2m,windspeed_10m&wind_speed_unit=ms&timezone=auto&start_date=${dateStr}&end_date=${dateStr}`;
-          const response = await fetch(weatherUrl);
+          const response = await fetch(weatherUrl, { signal });
           if(response.ok){
             const weatherData = await response.json();
             if(weatherData.hourly && weatherData.hourly.time && weatherData.hourly.cloudcover){
@@ -1410,7 +1437,10 @@
               }
             }
           }
-        } catch(e){ console.log("기상 데이터 로드 실패", e); }
+        } catch(e){
+          if(e && e.name === "AbortError") return;
+          console.log("기상 데이터 로드 실패", e);
+        }
       }
 
       function getCloudEvalForDate(d){
@@ -1448,7 +1478,7 @@
       timelineLabelHtml += '</div>';
 
       // --- core/gold windows + best visibility time/window
-      const simStartTime = new Date(dateStr); simStartTime.setHours(12,0,0,0);
+      const simStartTime = new Date(baseDate); simStartTime.setHours(12,0,0,0);
       const simEndTime = new Date(simStartTime.getTime() + 24*60*60*1000);
       let coreStart=null, coreEnd=null;
       let goldStart=null, goldEnd=null;
@@ -1472,7 +1502,7 @@
         }
       }
 
-      const scanStart = new Date(dateStr); scanStart.setHours(18,0,0,0);
+      const scanStart = new Date(baseDate); scanStart.setHours(18,0,0,0);
       const scanEnd = new Date(scanStart.getTime() + 12*60*60*1000);
 
       for(let t=scanStart.getTime(); t<=scanEnd.getTime(); t += 20*60000){
@@ -1548,7 +1578,7 @@
       const vLabel = scoreToLabel(visibilityScore);
 
       const az = norm360(gcPos.azimuth);
-      lastMWAzDeg = az; 
+      lastMWAzDeg = az;
 
       if (gcPos.altitude > 0){
         const dist = 0.5;
@@ -1626,7 +1656,6 @@
         </div>
       `;
 
-      // ✅ 정보 아코디언 형태로 결합
       let popupText = `
         <div style="font-size: 13px; line-height: 1.6; padding-bottom:5px;">
           ${titleHtml}
@@ -1672,7 +1701,6 @@
 
       marker.bindPopup(popupText).openPopup();
 
-      // Accordion 열고 닫을 때 팝업 크기 업데이트 처리 (Leaflet 기본 기능 보조)
       const popupNode = marker.getPopup().getElement();
       if(popupNode) {
         const detailsElements = popupNode.querySelectorAll('details');
@@ -1816,7 +1844,7 @@
             const cMid   = weatherData.hourly.cloudcover_mid[idx];
             const cHigh  = weatherData.hourly.cloudcover_high[idx];
 
-            const d = new Date(targetDate); d.setHours(h,0,0,0);
+            const d = parseLocalYMD(targetDate); d.setHours(h,0,0,0);
             const gcPos = getGalacticCorePosition(d, spot.lat, spot.lng);
             const moonEval = evaluateMoonImpact(d, spot.lat, spot.lng, gcPos.azimuth);
             const cloudEval = evaluateCloudImpact(cLow, cMid, cHigh, cTotal);
