@@ -9,15 +9,30 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
   <style>
-    body { margin: 0; padding: 0; overflow: hidden; background: #000; }
+    html, body { height:100%; }
+    body {
+      margin: 0; padding: 0;
+      overflow: hidden; background: #000;
+      /* iOS bounce 완화 */
+      position: fixed; width:100%;
+      overscroll-behavior: none;
+      -webkit-overflow-scrolling: auto;
+    }
     #map { width: 100vw; height: 100vh; }
 
     #ui-panel{
       position:absolute; top:20px; right:20px; z-index:1000;
       background:rgba(30,30,30,0.85); backdrop-filter:blur(10px); color:white;
       padding:20px; border-radius:12px; font-family:sans-serif;
-      box-shadow:0 4px 15px rgba(0,0,0,0.5); width:270px; max-height:90vh; overflow-y:auto;
+      box-shadow:0 4px 15px rgba(0,0,0,0.5); width:270px; max-height:90vh;
+      overflow-y:auto;
       box-sizing:border-box;
+
+      /* iOS momentum scroll (열린 상태에서만 유효하게 쓰려고 JS로도 제어) */
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      contain: layout paint;
+      will-change: transform;
     }
     #ui-panel::-webkit-scrollbar{ width:8px; }
     #ui-panel::-webkit-scrollbar-thumb{ background:rgba(255,255,255,0.3); border-radius:4px; }
@@ -25,6 +40,7 @@
     .mobile-handle{
       display:none; width:40px; height:5px; background:rgba(255,255,255,0.4);
       border-radius:3px; margin:0 auto 15px auto; cursor:pointer;
+      touch-action: none;
     }
 
     .ui-section{ margin-bottom:15px; }
@@ -41,9 +57,8 @@
     button:hover{ background:rgba(255,255,255,0.2); }
 
     .flex-row{ display:flex; gap:8px; }
-    .flex-row input{ flex:2; margin-top:0; }
+    .flex-row input, .flex-row select { flex:2; margin-top:0; }
     .flex-row button{ flex:1; margin-top:0; }
-
     label{ cursor:pointer; display:flex; align-items:center; gap:8px; font-size:14px; }
     input[type="range"]{ width:100%; margin-top:5px; cursor:pointer; }
 
@@ -76,9 +91,15 @@
 
     .btn-capture{
       background:rgba(0,221,255,0.15); border:1px dashed #0df; color:#0df;
-      font-weight:bold; padding:10px; margin-top:12px; transition:0.3s; border-radius:6px;
+      font-weight:bold; padding:10px; margin-top:12px; transition:0.3s; border-radius:6px; width: 100%; box-sizing: border-box;
     }
     .btn-capture:hover{ background:rgba(0,221,255,0.35); color:#fff; }
+
+    .btn-favorite {
+      background:rgba(255,200,0,0.15); border:1px dashed #fd0; color:#fd0;
+      font-weight:bold; padding:10px; margin-top:6px; transition:0.3s; border-radius:6px; width: 100%; box-sizing: border-box;
+    }
+    .btn-favorite:hover { background:rgba(255,200,0,0.35); color:#fff; }
 
     #progress-container{ width:100%; height:6px; background:#333; border-radius:3px; margin-top:10px; overflow:hidden; display:none; }
     #progress-bar{ width:0%; height:100%; background:#0df; transition:width 0.2s ease-out; }
@@ -105,156 +126,57 @@
     .mode-weather{ background:rgba(0,255,100,0.15); color:#9f9; }
     .mode-no-weather{ background:rgba(255,200,0,0.15); color:#fd0; }
 
-    /* ===== Search results list ===== */
-    #search-status{
-      display:none;
-      margin-top:8px;
-      font-size:11px;
-      color:#0df;
-      line-height:1.4;
-      word-break:keep-all;
-    }
-    #search-results{
-      display:none;
-      margin-top:10px;
-      border:1px solid rgba(255,255,255,0.12);
-      border-radius:10px;
-      overflow:hidden;
-      background:rgba(0,0,0,0.35);
-    }
-    .search-item{
-      padding:10px 10px;
-      border-bottom:1px dashed rgba(255,255,255,0.12);
-      cursor:pointer;
-      transition:0.15s;
-    }
+    /* Search results */
+    #search-status{ display:none; margin-top:8px; font-size:11px; color:#0df; line-height:1.4; word-break:keep-all; }
+    #search-results{ display:none; margin-top:10px; border:1px solid rgba(255,255,255,0.12); border-radius:10px; overflow:hidden; background:rgba(0,0,0,0.35); }
+    .search-item{ padding:10px 10px; border-bottom:1px dashed rgba(255,255,255,0.12); cursor:pointer; transition:0.15s; }
     .search-item:last-child{ border-bottom:none; }
     .search-item:hover{ background:rgba(0,221,255,0.12); }
-    .search-main{
-      font-size:12.5px;
-      font-weight:700;
-      color:#fff;
-      line-height:1.2;
-      margin-bottom:4px;
-    }
-    .search-sub{
-      font-size:10.5px;
-      color:#aaa;
-      line-height:1.3;
-    }
-    .search-meta{
-      margin-top:6px;
-      display:flex;
-      justify-content:space-between;
-      font-size:10px;
-      color:#888;
-      gap:8px;
-    }
-    .btn-clear-results{
-      margin-top:8px;
-      padding:8px;
-      border-radius:8px;
-      background:rgba(255,255,255,0.08);
-      border:1px solid rgba(255,255,255,0.14);
-      color:#ddd;
-      font-size:12px;
-    }
+    .search-main{ font-size:12.5px; font-weight:700; color:#fff; line-height:1.2; margin-bottom:4px; }
+    .search-sub{ font-size:10.5px; color:#aaa; line-height:1.3; }
+    .search-meta{ margin-top:6px; display:flex; justify-content:space-between; font-size:10px; color:#888; gap:8px; }
+    .btn-clear-results{ margin-top:8px; padding:8px; border-radius:8px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); color:#ddd; font-size:12px; }
     .btn-clear-results:hover{ background:rgba(255,255,255,0.16); }
 
-    /* ===== Help/Guide (Light Pollution) ===== */
-    .help-toggle{
-      display:flex; align-items:center; justify-content:space-between;
-      width:100%;
-      padding:10px;
-      border-radius:10px;
-      background:rgba(255,255,255,0.06);
-      border:1px solid rgba(255,255,255,0.12);
-      margin-top:6px;
-      font-weight:800;
-      letter-spacing:0.2px;
-    }
+    /* Help guide */
+    .help-toggle{ display:flex; align-items:center; justify-content:space-between; width:100%; padding:10px; border-radius:10px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); margin-top:6px; font-weight:800; letter-spacing:0.2px; }
     .help-toggle:hover{ background:rgba(255,255,255,0.10); }
-    .help-toggle .badge{
-      font-size:11px; font-weight:800; padding:3px 8px; border-radius:999px;
-      border:1px solid rgba(255,255,255,0.15); color:#0df;
-      background:rgba(0,221,255,0.10);
-    }
-    .help-body{
-      display:none;
-      margin-top:10px;
-      padding:12px;
-      border-radius:12px;
-      background:rgba(0,0,0,0.35);
-      border:1px solid rgba(255,255,255,0.12);
-      font-size:12px;
-      color:#ddd;
-      line-height:1.55;
-    }
+    .help-toggle .badge{ font-size:11px; font-weight:800; padding:3px 8px; border-radius:999px; border:1px solid rgba(255,255,255,0.15); color:#0df; background:rgba(0,221,255,0.10); }
+    .help-body{ display:none; margin-top:10px; padding:12px; border-radius:12px; background:rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.12); font-size:12px; color:#ddd; line-height:1.55; }
     .help-body strong{ color:#fff; }
-    .help-grid{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:8px;
-      margin-top:10px;
-    }
-    .lp-chip{
-      display:flex; align-items:center; gap:8px;
-      padding:8px; border-radius:10px;
-      border:1px solid rgba(255,255,255,0.12);
-      background:rgba(255,255,255,0.04);
-      font-size:11px;
-      color:#ccc;
-    }
-    .lp-dot{
-      width:10px; height:10px; border-radius:50%;
-      box-shadow:0 0 10px rgba(255,255,255,0.15);
-      flex:0 0 10px;
-    }
-    .help-hr{
-      border:0;
-      border-top:1px dashed rgba(255,255,255,0.14);
-      margin:10px 0;
-    }
-    .help-tip{
-      font-size:11px;
-      color:#aaa;
-      margin-top:8px;
-    }
+    .help-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:10px; }
+    .lp-chip{ display:flex; align-items:center; gap:8px; padding:8px; border-radius:10px; border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.04); font-size:11px; color:#ccc; }
+    .lp-dot{ width:10px; height:10px; border-radius:50%; box-shadow:0 0 10px rgba(255,255,255,0.15); flex:0 0 10px; }
+    .help-hr{ border:0; border-top:1px dashed rgba(255,255,255,0.14); margin:10px 0; }
+    .help-tip{ font-size:11px; color:#aaa; margin-top:8px; }
 
     @media (max-width:768px){
       .mobile-handle{ display:block; }
       #ui-panel{
         top:auto; bottom:0; right:0; left:0; width:100vw;
         border-radius:20px 20px 0 0; max-height:65vh;
-        transform:translateY(0); transition:transform 0.3s cubic-bezier(0.4,0,0.2,1);
+        transform:translateY(0);
+        transition:transform 0.28s cubic-bezier(0.4,0,0.2,1);
         padding-bottom:30px;
-      }
-      #ui-panel.collapsed{ transform:translateY(calc(100% - 50px)); }
-      .leaflet-control-locate{ margin-left:10px !important; margin-top:10px !important; }
-      .leaflet-popup-content-wrapper, .leaflet-popup-tip{ width:280px; }
-    }
 
-    /* ===== Mobile Panel Drag (Swipe up/down) ===== */
-    @media (max-width:768px){
-      #ui-panel{
-        touch-action: pan-y;
-        will-change: transform;
-      }
-      #ui-panel.dragging{
-        overflow: hidden !important;
+        /* ✅ iOS 제스처 충돌 최소화 */
+        touch-action: none;
       }
       #ui-panel.collapsed{
-        overflow: hidden !important;
+        transform:translateY(calc(100% - 50px));
+        overflow: hidden;
+        -webkit-overflow-scrolling: auto;
       }
+      .leaflet-control-locate{ margin-left:10px !important; margin-top:10px !important; }
+      .leaflet-popup-content-wrapper, .leaflet-popup-tip{ width:280px; }
     }
   </style>
 </head>
 
 <body>
-  <div id="ui-panel">
-    <div class="mobile-handle" id="mobile-toggle"></div>
+  <div id="ui-panel" aria-label="컨트롤 패널">
+    <div class="mobile-handle" id="mobile-toggle" aria-label="패널 핸들"></div>
 
-    <!-- ✅ Help / Guide (New) -->
     <div class="ui-section">
       <div class="ui-title">❓ 초보자 가이드</div>
       <button id="btn-help-toggle" class="help-toggle" type="button">
@@ -296,10 +218,19 @@
         <input type="text" id="search-input" placeholder="도시, 지역, 명소 입력..." autocomplete="off">
         <button id="btn-search">검색</button>
       </div>
-
       <div id="search-status"></div>
       <div id="search-results"></div>
       <button id="btn-clear-results" class="btn-clear-results" style="display:none;">검색 결과 닫기</button>
+    </div>
+
+    <div class="ui-section">
+      <div class="ui-title">⭐ 내 장소 (즐겨찾기)</div>
+      <div class="flex-row">
+        <select id="favorite-spots">
+          <option value="">저장된 장소 선택...</option>
+        </select>
+        <button id="btn-del-fav" style="flex:0.5; background:rgba(255,50,50,0.2); border-color:#f55; color:#f55;">삭제</button>
+      </div>
     </div>
 
     <div class="ui-section">
@@ -385,7 +316,7 @@
 
       const KEY = "mw_help_open";
       const saved = localStorage.getItem(KEY);
-      let open = (saved === null) ? true : (saved === "1"); // 기본은 열어둠(초보자 친화)
+      let open = (saved === null) ? true : (saved === "1");
 
       function apply(){
         body.style.display = open ? "block" : "none";
@@ -444,7 +375,6 @@
     });
     map.addControl(new LocateControl());
 
-    // Layers
     const standardLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' });
     const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19, attribution: '&copy; CARTO' });
     const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: '&copy; Esri' });
@@ -457,135 +387,259 @@
       { opacity: 0.6, maxNativeZoom: 6, maxZoom: 19, zIndex: 10 }
     ).addTo(map);
 
-    // ===== Mobile handle click (keep) =====
-    document.getElementById('mobile-toggle').addEventListener('click', function() {
-      if(window.innerWidth <= 768){
-        document.getElementById('ui-panel').classList.toggle('collapsed');
-      }
-    });
-
-    // ===== Mobile Panel Drag (Swipe up/down to expand/collapse) =====
+    // =========================================================
+    // ✅ iOS 탄성(바운스) 스크롤/오버스크롤 방지 + 바텀시트 제스처
+    // - 접힌 상태: 패널(보이는 50px)에 "터치(탭)"하면 올라옴
+    // - 접힌 상태: 스와이프(위/아래)로 열고 닫힘
+    // - 열린 상태: 상단(핸들/상단영역)에서만 아래로 당기면 닫힘
+    // - 열린 상태: 내부는 정상 스크롤(모멘텀 포함)
+    // =========================================================
     (function initMobilePanelDrag(){
-      const panel = document.getElementById('ui-panel');
+      const panel  = document.getElementById('ui-panel');
       const handle = document.getElementById('mobile-toggle');
 
-      function isMobile(){ return window.innerWidth <= 768; }
+      const PEEK = 50;                 // CSS와 동일
+      const THRESHOLD_RATIO = 0.18;
+      const TOP_DRAG_ZONE = 90;         // 열린 상태에서 상단 드래그 허용 영역
+      const TAP_MOVE_PX = 8;            // 탭/드래그 판정 기준
 
-      function getPanelMetrics(){
-        const rect = panel.getBoundingClientRect();
-        const visiblePeek = 50; // MUST match CSS: calc(100% - 50px)
-        const fullH = rect.height;
-        const collapsedY = Math.max(0, fullH - visiblePeek);
-        return { fullH, collapsedY, visiblePeek };
-      }
-
-      let dragging = false;
       let startY = 0;
+      let startX = 0;
       let startTranslate = 0;
       let currentTranslate = 0;
+      let dragging = false;
+      let tapCandidate = false;
 
-      function setTranslateY(y){
-        panel.style.transform = `translateY(${y}px)`;
+      // iOS 오버스크롤 봉인(전역)
+      let globalLock = false;
+
+      const isMobile = () => window.innerWidth <= 768;
+
+      function getMaxTranslate(){
+        const h = panel.getBoundingClientRect().height;
+        return Math.max(0, h - PEEK);
       }
+      function setTranslate(y){ panel.style.transform = `translateY(${y}px)`; }
+      function clearTranslate(){ panel.style.transform = ''; }
 
-      function clearInlineTransform(){
-        panel.style.transform = '';
+      function lockPanelScroll(lock){
+        // 드래그 중 내부 스크롤 봉인 + iOS bounce 방지 플래그
+        if(lock){
+          panel.dataset.prevOverflow = panel.style.overflow;
+          panel.style.overflow = 'hidden';
+          panel.style.webkitOverflowScrolling = 'auto';
+          globalLock = true;
+        }else{
+          panel.style.overflow = panel.dataset.prevOverflow || '';
+          delete panel.dataset.prevOverflow;
+          panel.style.webkitOverflowScrolling = 'touch';
+          globalLock = false;
+        }
       }
 
       function expand(){
         panel.classList.remove('collapsed');
-        panel.classList.remove('dragging');
-        clearInlineTransform();
+        panel.style.transition = '';
+        lockPanelScroll(false);
+        clearTranslate();
       }
-
       function collapse(){
         panel.classList.add('collapsed');
-        panel.classList.remove('dragging');
-        clearInlineTransform();
+        panel.style.transition = '';
+        lockPanelScroll(false);
+        clearTranslate();
+        panel.scrollTop = 0; // 접을 때 내부 위치 리셋(체감 좋아짐)
+      }
+      function isCollapsed(){ return panel.classList.contains('collapsed'); }
+
+      function withinTopZone(clientY){
+        const rect = panel.getBoundingClientRect();
+        return clientY <= (rect.top + TOP_DRAG_ZONE);
       }
 
       function canStartDrag(target, clientY){
         if(!isMobile()) return false;
 
-        if(handle && (target === handle || handle.contains(target))) return true;
-        if(panel.classList.contains('collapsed')) return true;
+        // 접힌 상태: 보이는 PEEK 영역이면 어디서든 드래그 시작 OK
+        if(isCollapsed()) return true;
 
+        // 열린 상태: 핸들이거나 상단 영역 + scrollTop이 맨 위일 때만
+        const isHandle = handle && (target === handle || handle.contains(target));
         const atTop = panel.scrollTop <= 0;
-        if(!atTop) return false;
-
-        const rect = panel.getBoundingClientRect();
-        const topZone = rect.top + 70;
-        return clientY <= topZone;
+        return (isHandle || withinTopZone(clientY)) && atTop;
       }
 
-      function onPointerDown(e){
-        if(!canStartDrag(e.target, e.clientY)) return;
+      // ✅ iOS 탄성 스크롤(바운스) 방지: globalLock일 때는 문서 스크롤도 막음
+      document.addEventListener('touchmove', (e) => {
+        if(!isMobile()) return;
+        if(globalLock && e.cancelable) e.preventDefault();
+      }, { passive:false });
+
+      function onTouchStart(e){
+        if(!isMobile()) return;
+
+        const t = e.touches[0];
+        startY = t.clientY;
+        startX = t.clientX;
+        tapCandidate = isCollapsed(); // 접힌 상태에서는 "탭으로 열기" 후보
+
+        if(!canStartDrag(e.target, t.clientY)) return;
 
         dragging = true;
-        panel.classList.add('dragging');
+        panel.style.transition = 'none';
 
-        startY = e.clientY;
-
-        const { collapsedY } = getPanelMetrics();
-
-        if(panel.classList.contains('collapsed')){
-          startTranslate = collapsedY;
-          setTranslateY(startTranslate);
-        } else {
-          startTranslate = 0;
-          setTranslateY(0);
-        }
-
+        const maxT = getMaxTranslate();
+        startTranslate = isCollapsed() ? maxT : 0;
         currentTranslate = startTranslate;
 
-        e.preventDefault();
-        e.stopPropagation();
-        panel.setPointerCapture?.(e.pointerId);
+        lockPanelScroll(true);
+        setTranslate(currentTranslate);
+
+        if(e.cancelable) e.preventDefault();
       }
 
-      function onPointerMove(e){
+      function onTouchMove(e){
+        if(!isMobile()) return;
+        const t = e.touches[0];
+        const dy = t.clientY - startY;
+        const dx = t.clientX - startX;
+
+        // 탭 후보는 움직이면 해제
+        if(tapCandidate && (Math.abs(dy) > TAP_MOVE_PX || Math.abs(dx) > TAP_MOVE_PX)){
+          tapCandidate = false;
+        }
+
         if(!dragging) return;
 
-        const { collapsedY } = getPanelMetrics();
-        const dy = e.clientY - startY;
+        const maxT = getMaxTranslate();
+
+        // 열린 상태에서 위로(dy<0)는 "컨텐츠 스크롤" 의도로 보고 드래그 종료
+        if(!isCollapsed() && dy < 0){
+          dragging = false;
+          panel.style.transition = '';
+          lockPanelScroll(false);
+          clearTranslate();
+          return;
+        }
 
         let next = startTranslate + dy;
         if(next < 0) next = 0;
-        if(next > collapsedY) next = collapsedY;
+        if(next > maxT) next = maxT;
 
         currentTranslate = next;
-        setTranslateY(currentTranslate);
+        setTranslate(currentTranslate);
 
-        e.preventDefault();
-        e.stopPropagation();
+        if(e.cancelable) e.preventDefault();
       }
 
-      function onPointerUp(e){
+      function onTouchEnd(){
+        if(!isMobile()) return;
+
+        // ✅ 접힌 상태에서 "탭"으로 열기(메뉴 끝 터치해서 올라가기)
+        // - 드래그가 아니었고, 거의 움직임이 없고, 접힌 상태면 확장
+        if(!dragging && tapCandidate && isCollapsed()){
+          expand();
+          tapCandidate = false;
+          return;
+        }
+
         if(!dragging) return;
+
         dragging = false;
+        panel.style.transition = '';
+        lockPanelScroll(false);
 
-        const { collapsedY } = getPanelMetrics();
-        panel.classList.remove('dragging');
+        const maxT = getMaxTranslate();
+        const threshold = maxT * THRESHOLD_RATIO;
 
-        const threshold = collapsedY * 0.5;
+        // 가까운 쪽으로 스냅
         if(currentTranslate > threshold) collapse();
         else expand();
-
-        e.preventDefault();
-        e.stopPropagation();
       }
 
-      panel.addEventListener('pointerdown', onPointerDown, { passive:false });
-      window.addEventListener('pointermove', onPointerMove, { passive:false });
-      window.addEventListener('pointerup', onPointerUp, { passive:false });
+      panel.addEventListener('touchstart', onTouchStart, { passive:false });
+      panel.addEventListener('touchmove',  onTouchMove,  { passive:false });
+      panel.addEventListener('touchend',   onTouchEnd,   { passive:true  });
+      panel.addEventListener('touchcancel',onTouchEnd,   { passive:true  });
+
+      // 핸들 탭 토글 (유지)
+      handle.addEventListener('click', () => {
+        if(!isMobile()) return;
+        isCollapsed() ? expand() : collapse();
+      });
+
+      // 접힌 상태에서 "보이는 영역 아무 곳이나 클릭/탭하면 열기" (PC 모바일 에뮬 대응)
+      panel.addEventListener('click', (e) => {
+        if(!isMobile()) return;
+        if(isCollapsed()) expand();
+      });
 
       window.addEventListener('resize', () => {
-        panel.classList.remove('dragging');
-        panel.style.transform = '';
+        panel.style.transition = '';
+        lockPanelScroll(false);
+        clearTranslate();
       });
     })();
 
-    // ===== Search Feature (패널 리스트 렌더링) =====
+    // ===== Favorites =====
+    function loadFavorites() {
+      const sel = document.getElementById('favorite-spots');
+      sel.innerHTML = '<option value="">저장된 장소 선택...</option>';
+      let favs = JSON.parse(localStorage.getItem('mw_fav_spots') || '[]');
+      favs.forEach((f, i) => {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = f.name;
+        sel.appendChild(opt);
+      });
+    }
+
+    window.saveFavorite = function(ev, lat, lng, defaultName) {
+      if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+      let favs = JSON.parse(localStorage.getItem('mw_fav_spots') || '[]');
+      let name = prompt("저장할 장소 이름을 입력하세요:", defaultName || '새로운 관측지');
+      if (!name) return;
+
+      favs.push({ name: name, lat: lat, lng: lng });
+      localStorage.setItem('mw_fav_spots', JSON.stringify(favs));
+      loadFavorites();
+      alert(`'${name}'이(가) 즐겨찾기에 저장되었습니다.`);
+    };
+
+    document.getElementById('favorite-spots').addEventListener('change', function(e) {
+      const val = e.target.value;
+      if (val === "") return;
+      let favs = JSON.parse(localStorage.getItem('mw_fav_spots') || '[]');
+      const spot = favs[val];
+      if (spot) {
+        map.setView([spot.lat, spot.lng], 11);
+        analyzeData(spot.lat, spot.lng, spot.name);
+        if(window.innerWidth <= 768) {
+          document.getElementById('ui-panel').classList.add('collapsed');
+        }
+      }
+    });
+
+    document.getElementById('btn-del-fav').addEventListener('click', function() {
+      const sel = document.getElementById('favorite-spots');
+      const val = sel.value;
+      if (val === "") {
+        alert("목록에서 삭제할 장소를 먼저 선택해주세요.");
+        return;
+      }
+      let favs = JSON.parse(localStorage.getItem('mw_fav_spots') || '[]');
+      const name = favs[val].name;
+      if(confirm(`'${name}'을(를) 삭제하시겠습니까?`)) {
+        favs.splice(val, 1);
+        localStorage.setItem('mw_fav_spots', JSON.stringify(favs));
+        loadFavorites();
+        map.closePopup();
+      }
+    });
+
+    loadFavorites();
+
+    // ===== Search Feature =====
     const elSearchStatus  = document.getElementById('search-status');
     const elSearchResults = document.getElementById('search-results');
     const btnClearResults = document.getElementById('btn-clear-results');
@@ -604,8 +658,16 @@
       btnClearResults.style.display = "none";
       setSearchStatus("", "#0df", false);
     }
-
     btnClearResults.addEventListener('click', clearSearchUI);
+
+    function escapeHtml(str){
+      return String(str || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
 
     function renderSearchResults(items){
       if(!items || items.length === 0){
@@ -655,15 +717,6 @@
           document.getElementById('ui-panel').classList.add('collapsed');
         }
       };
-    }
-
-    function escapeHtml(str){
-      return String(str || "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
     }
 
     async function performSearch() {
@@ -729,7 +782,7 @@
       if (e.key === 'Enter') performSearch();
     });
 
-    // ===== Milky Way & Astro Logic =====
+    // ===== Astro Logic =====
     function getGalacticCorePosition(date, lat, lng) {
       const RA = 266.4168, Dec = -29.0078, rad = Math.PI / 180;
       const jd = (date.getTime() / 86400000) + 2440587.5;
@@ -996,6 +1049,7 @@
       const rCore = isCoreSafe ? `<span style="color:#0df">고도 ${Math.round(gcPos.altitude)}°</span>` : `<span style="color:#f55">고도 ${Math.round(gcPos.altitude)}° (낮음)</span>`;
       const rLP   = `<span><b style="color:${lpEval.statusColor}">${lpEval.statusText}</b></span>`;
       const titleHtml = spotName ? `<b>📍 ${spotName}</b><br>` : `<b>📍 관측 후보지</b> (${lat.toFixed(3)}, ${lng.toFixed(3)})<br>`;
+      const safeSpotName = spotName ? spotName.replace(/'/g, "\\'") : '';
 
       let popupText = `
         <div style="font-size: 13px; line-height: 1.6; padding-bottom:5px;">
@@ -1031,6 +1085,9 @@
       popupText += `
         <button class="btn-capture" onclick="capturePopup(event, this)">
           📸 결과 캡처하여 저장하기
+        </button>
+        <button class="btn-favorite" onclick="saveFavorite(event, ${lat}, ${lng}, '${safeSpotName}')">
+          ⭐ 이 장소 즐겨찾기에 저장
         </button>
       </div>`;
 
