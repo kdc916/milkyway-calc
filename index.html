@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>은하수 관측 확률 계산기 Pro Max</title>
+  <title>은하수 관측 확률 계산기 Pro Max (FINAL)</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -31,6 +31,9 @@
       overscroll-behavior: contain;
       contain: layout paint;
       will-change: transform;
+
+      /* ✅ 기본은 스크롤 허용 */
+      touch-action: pan-y;
     }
     #ui-panel::-webkit-scrollbar{ width:8px; }
     #ui-panel::-webkit-scrollbar-thumb{ background:rgba(255,255,255,0.3); border-radius:4px; }
@@ -62,7 +65,6 @@
 
     .time-display-box{ text-align:center; font-size:18px; font-weight:900; color:#0df; margin-bottom:5px; }
 
-    /* ===== Popup UI (스크롤 및 아코디언) ===== */
     .leaflet-popup-content-wrapper, .leaflet-popup-tip{
       background:rgba(20,20,20,0.95) !important;
       backdrop-filter:blur(10px) !important;
@@ -82,7 +84,6 @@
     .leaflet-popup-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 4px; }
     .leaflet-popup-content hr{ border:0; border-top:1px solid rgba(255,255,255,0.15); margin:10px 0; }
 
-    /* 아코디언 스타일 */
     .popup-details {
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid rgba(255, 255, 255, 0.12);
@@ -109,9 +110,7 @@
       color: #aaa;
       transition: transform 0.2s;
     }
-    .popup-details[open] .popup-summary::after {
-      transform: rotate(180deg);
-    }
+    .popup-details[open] .popup-summary::after { transform: rotate(180deg); }
     .popup-details-content {
       padding: 0 10px 12px 10px;
       border-top: 1px dashed rgba(255, 255, 255, 0.1);
@@ -206,7 +205,6 @@
     .help-hr{ border:0; border-top:1px dashed rgba(255,255,255,0.14); margin:10px 0; }
     .help-tip{ font-size:11px; color:#aaa; margin-top:8px; }
 
-    /* Compass / Navigation UI (panel + popup reuse) */
     .card{
       padding:10px; border-radius:12px;
       border:1px solid rgba(255,255,255,0.12);
@@ -264,16 +262,15 @@
         transition:transform 0.28s cubic-bezier(0.4,0,0.2,1);
         padding-bottom:30px;
 
-        /* ✅ FIX: 모바일 패널 스크롤 허용 */
+        /* ✅ 모바일에서도 스크롤은 기본 허용 */
         touch-action: pan-y;
       }
-      /* ✅ FIX: 핸들만 드래그 제스처 전용 */
-      .mobile-handle{ touch-action:none; }
-
       #ui-panel.collapsed{
         transform:translateY(calc(100% - 54px));
         overflow:hidden;
         -webkit-overflow-scrolling:auto;
+        /* ✅ 닫혀있을 때만 제스처 막기 */
+        touch-action: none;
       }
       .leaflet-control-locate{ margin-left:10px !important; margin-top:10px !important; }
       .leaflet-popup-content-wrapper, .leaflet-popup-tip{ width:300px; }
@@ -307,8 +304,8 @@
         지도 아무 곳이나 누르면 팝업에 <strong>“은하수 방향(방위각)”</strong>이 나옵니다.<br>
         • <strong>보라색 점선</strong>: 해당 시간 코어 방향<br>
         • <strong>나침반</strong>: 카메라를 어느 쪽으로 돌릴지<br>
-        • <strong>선명도 점수</strong>: 코어 고도 + 달빛 + 구름 + 광해방향 종합
-        <div class="help-tip">TIP: “선명도 점수” 높은 시간대 → “방향”대로 프레이밍. 초보자 성공 루트, ㄹㅇ.</div>
+        • <strong>선명도 점수</strong>: 코어 고도 + 달빛 + 구름 + 광해방향 종합<br>
+        <div class="help-tip">TIP: 점수 높은 시간대 → “방향”대로 프레이밍. 초보자 성공 루트, ㄹㅇ.</div>
       </div>
     </div>
 
@@ -432,7 +429,14 @@
       <div class="card" id="best-date-box">계산 중...</div>
       <button id="btn-simulate" class="btn-simulate">🚀 선택한 날짜의 최적지 찾기</button>
       <div id="progress-container"><div id="progress-bar"></div></div>
+
+      <div class="card" id="rank-box" style="display:none; margin-top:10px;"></div>
+
       <div id="simulate-msg" class="notice-text" style="display:none; color:#0df;"></div>
+      <div class="notice-text">
+        ✅ 최적지 점수는 <b>코어 고도 + 달 + 구름 + 광해방향</b>에 더해,
+        <b>고도(산지 우선)</b>, <b>풍속(강풍 리스크)</b>, <b>내 위치 이동거리(현실성)</b>까지 포함합니다.
+      </div>
     </div>
   </div>
 
@@ -448,13 +452,6 @@
     function pad2(n){ return String(n).padStart(2,'0'); }
     function fmtYMD(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
     function getToday(){ return new Date(); }
-
-    // ✅ FIX: 로컬 기준 날짜 파싱(UTC 하루 밀림 방지)
-    function parseLocalYMD(dateStr){
-      const [y,m,d] = dateStr.split('-').map(Number);
-      return new Date(y, m-1, d); // local 00:00
-    }
-
     function daysBetween(a, b){
       const aa = new Date(a.getFullYear(), a.getMonth(), a.getDate());
       const bb = new Date(b.getFullYear(), b.getMonth(), b.getDate());
@@ -492,6 +489,15 @@
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
     }
+    function haversineKm(lat1, lon1, lat2, lon2){
+      const R = 6371;
+      const rad = Math.PI/180;
+      const dLat = (lat2-lat1)*rad;
+      const dLon = (lon2-lon1)*rad;
+      const a = Math.sin(dLat/2)**2 +
+        Math.cos(lat1*rad)*Math.cos(lat2*rad)*Math.sin(dLon/2)**2;
+      return 2*R*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
 
     // =========================
     // Init date
@@ -528,12 +534,28 @@
     const map = L.map('map', { zoomControl: false }).setView([38.09, 127.07], 10);
     L.control.zoom({ position: 'topleft' }).addTo(map);
 
+    // ✅ 내 위치(거리 페널티용) 저장
+    let myLocation = null; // {lat,lng}
+    const KEY_MYLOC = "mw_my_location";
+
+    (function loadMyLoc(){
+      try{
+        const v = JSON.parse(localStorage.getItem(KEY_MYLOC) || "null");
+        if(v && typeof v.lat==="number" && typeof v.lng==="number") myLocation = v;
+      }catch(e){}
+    })();
+
+    function saveMyLoc(lat,lng){
+      myLocation = {lat,lng};
+      localStorage.setItem(KEY_MYLOC, JSON.stringify(myLocation));
+    }
+
     const LocateControl = L.Control.extend({
       options: { position: 'topleft' },
       onAdd: function(map) {
         const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-locate');
         container.innerHTML = '📍';
-        container.title = '내 위치로 이동';
+        container.title = '내 위치로 이동 (거리 페널티 기준점도 저장)';
 
         L.DomEvent.disableClickPropagation(container);
         L.DomEvent.on(container, 'click', (e) => {
@@ -545,6 +567,9 @@
                 container.innerHTML = '📍';
                 const lat = pos.coords.latitude;
                 const lng = pos.coords.longitude;
+
+                saveMyLoc(lat, lng);
+
                 map.setView([lat, lng], 11);
                 analyzeData(lat, lng, "내 위치 (현위치)");
 
@@ -578,7 +603,10 @@
     ).addTo(map);
 
     // =========================
-    // Mobile bottom sheet swipe (tap to open + threshold)  ✅ FIX: 스크롤/드래그 공존
+    // ✅ Mobile bottom sheet swipe (scroll fix FINAL)
+    // - 스크롤은 기본 허용
+    // - 드래그는 "핸들" 또는 패널 상단 90px + 스크롤탑(0)일 때만 시작
+    // - dragging 중에만 preventDefault
     // =========================
     (function initMobilePanelDrag(){
       const panel  = document.getElementById('ui-panel');
@@ -607,26 +635,20 @@
       function setTranslate(y){ panel.style.transform = `translateY(${y}px)`; }
       function clearTranslate(){ panel.style.transform = ''; }
 
-      function lockPanelScroll(lock){
-        if(lock){
-          panel.style.overflow = 'hidden';
-          panel.style.webkitOverflowScrolling = 'auto';
-        }else{
-          panel.style.overflow = '';
-          panel.style.webkitOverflowScrolling = 'touch';
-        }
-      }
-
       function expand(){
         panel.classList.remove('collapsed');
         panel.style.transition = '';
-        lockPanelScroll(false);
+        panel.style.overflowY = 'auto';
+        panel.style.webkitOverflowScrolling = 'touch';
+        panel.style.touchAction = 'pan-y';
         clearTranslate();
       }
       function collapse(){
         panel.classList.add('collapsed');
         panel.style.transition = '';
-        lockPanelScroll(false);
+        panel.style.overflowY = 'hidden';
+        panel.style.webkitOverflowScrolling = 'auto';
+        panel.style.touchAction = 'none';
         clearTranslate();
         panel.scrollTop = 0;
       }
@@ -636,7 +658,6 @@
         const rect = panel.getBoundingClientRect();
         return clientY <= (rect.top + TOP_DRAG_ZONE);
       }
-
       function canStartDrag(target, clientY){
         if(!isMobile()) return false;
         if(isCollapsed()) return true;
@@ -644,12 +665,6 @@
         const atTop = panel.scrollTop <= 0;
         return (isHandle || withinTopZone(clientY)) && atTop;
       }
-
-      // ✅ FIX: 드래그 중일 때만 preventDefault (스크롤 막힘 제거)
-      document.addEventListener('touchmove', (e) => {
-        if(!isMobile()) return;
-        if(dragging && e.cancelable) e.preventDefault();
-      }, { passive:false });
 
       function onTouchStart(e){
         if(!isMobile()) return;
@@ -674,9 +689,7 @@
         startTranslate = isCollapsed() ? maxT : 0;
         currentTranslate = startTranslate;
 
-        lockPanelScroll(true);
         setTranslate(currentTranslate);
-
         if(e.cancelable) e.preventDefault();
       }
 
@@ -695,7 +708,6 @@
         if(!isCollapsed() && dy < 0){
           dragging = false;
           panel.style.transition = '';
-          lockPanelScroll(false);
           clearTranslate();
           return;
         }
@@ -722,7 +734,6 @@
 
         dragging = false;
         panel.style.transition = '';
-        lockPanelScroll(false);
 
         const maxT = getMaxTranslate();
         if(isCollapsed()){
@@ -747,8 +758,15 @@
 
       window.addEventListener('resize', () => {
         panel.style.transition = '';
-        lockPanelScroll(false);
         clearTranslate();
+        if(isMobile()){
+          // 상태 유지하되 스크롤 허용값 재확정
+          if(isCollapsed()) { panel.style.overflowY='hidden'; panel.style.touchAction='none'; }
+          else { panel.style.overflowY='auto'; panel.style.touchAction='pan-y'; panel.style.webkitOverflowScrolling='touch'; }
+        } else {
+          panel.style.overflowY = 'auto';
+          panel.style.touchAction = 'auto';
+        }
       });
     })();
 
@@ -919,7 +937,7 @@
     // Weather window UI
     // =========================
     function isWithinWeatherWindow(dateStr){
-      const sel = parseLocalYMD(dateStr);
+      const sel = new Date(dateStr);
       const diff = daysBetween(getToday(), sel);
       return diff >= 0 && diff <= 14;
     }
@@ -935,8 +953,6 @@
         badge.classList.add('mode-weather');
         btn.disabled = false;
         btn.textContent = "🚀 선택한 날짜의 최적지 찾기";
-        const msg = document.getElementById('simulate-msg');
-        msg.style.display = 'none';
       } else {
         badge.textContent = "MODE: Weather OFF (14일 이후)";
         badge.classList.remove('mode-weather');
@@ -1046,7 +1062,6 @@
     let lastHeadingDeg = null;
     let lastMWAzDeg = null;
     let orientationHandler = null;
-    let compassEvtName = 'deviceorientation';
 
     function updateCompassPanelUI(){
       switchCompass.classList.toggle('on', compassEnabled);
@@ -1096,7 +1111,6 @@
     async function enableCompass(){
       compassEnabled = true;
       lastHeadingDeg = null;
-
       try{
         if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
           const res = await DeviceOrientationEvent.requestPermission();
@@ -1128,17 +1142,14 @@
         updateCompassPanelUI();
         updatePopupNavIfAny();
       };
-
-      // ✅ FIX: absolute 지원 우선
-      compassEvtName = ('ondeviceorientationabsolute' in window) ? 'deviceorientationabsolute' : 'deviceorientation';
-      window.addEventListener(compassEvtName, orientationHandler, true);
+      window.addEventListener('deviceorientation', orientationHandler, true);
       updateCompassPanelUI();
     }
 
     function disableCompass(){
       compassEnabled = false;
       if(orientationHandler){
-        window.removeEventListener(compassEvtName, orientationHandler, true);
+        window.removeEventListener('deviceorientation', orientationHandler, true);
         orientationHandler = null;
       }
       lastHeadingDeg = null;
@@ -1276,6 +1287,68 @@
       return { txt:"D급 (비추)", col:"#f55" };
     }
 
+    // =========================
+    // ✅ Elevation + Wind + Distance scoring
+    // =========================
+    function elevationBonus(elevM){
+      if(elevM == null || !isFinite(elevM)) return 0;
+      if(elevM < 50) return -4;
+      if(elevM < 300) return (elevM - 50) / 250 * 4;           // 0~+4
+      if(elevM < 900) return 4 + (elevM - 300) / 600 * 7;      // +4~+11
+      if(elevM < 1400) return 11 + (elevM - 900) / 500 * 3;    // +11~+14
+      return 14;
+    }
+
+    function elevationPenaltyForAccess(elevM, isGrid){
+      if(!isGrid) return 0;
+      if(elevM == null || !isFinite(elevM)) return 0;
+      if(elevM <= 1000) return 0;
+      if(elevM <= 1500) return (elevM - 1000) / 500 * 3; // 0~3
+      return 3.5;
+    }
+
+    // ✅ 강풍 리스크: 고도가 높을수록 같은 풍속에도 체감 리스크가 증가(가중)
+    function windPenalty(windMs, elevM){
+      if(windMs == null || !isFinite(windMs)) return 0;
+
+      const e = (elevM == null || !isFinite(elevM)) ? 0 : elevM;
+      // 고도 가중: 0m=1.0, 500m=1.12, 1000m=1.25, 1500m=1.37, 2000m=1.5(캡)
+      const elevFactor = clamp(1.0 + (e / 2000) * 0.5, 1.0, 1.5);
+      const eff = windMs * elevFactor;
+
+      // 풍속 구간별 페널티 (촬영 장비 흔들림/체감, 간단 보정)
+      if(eff < 3.5) return 0;
+      if(eff < 5.0) return (eff - 3.5) * 2.5;          // 0~3.75
+      if(eff < 7.0) return 4 + (eff - 5.0) * 4.5;      // 4~13
+      if(eff < 9.0) return 13 + (eff - 7.0) * 6.0;     // 13~25
+      return 25 + (eff - 9.0) * 8.0;                   // 급격히 증가
+    }
+
+    // ✅ 이동거리 페널티: "현실적으로 갈만한" 곳 위로
+    function distancePenaltyKm(distKm){
+      if(distKm == null || !isFinite(distKm)) return 0;
+      // 0~30km: 거의 무시
+      if(distKm <= 30) return 0;
+
+      // 30~120km: 완만히
+      if(distKm <= 120) return (distKm - 30) / 90 * 10;   // 0~10
+
+      // 120~250km: 확실히 페널티
+      if(distKm <= 250) return 10 + (distKm - 120) / 130 * 18; // 10~28
+
+      // 250km 이상: 캡 (아예 못 가는 건 아니니)
+      return 28 + clamp((distKm - 250) / 250 * 10, 0, 10); // 최대 ~38
+    }
+
+    // ✅ "육지로만" 필터(추정): Open-Meteo elevation이 너무 낮으면 바다/갯벌로 판단 → 제외
+    function isLikelyLand(elevM){
+      if(elevM == null || !isFinite(elevM)) return true; // elevation이 없으면 강제 제외는 안함
+      return elevM >= 3; // 0~2m는 바다 한가운데/연안 갯벌로 많이 잡힘
+    }
+
+    // =========================
+    // Compass popup UI helpers
+    // =========================
     function buildCompassSvgHtml(idPrefix, mwAzDeg){
       const mwArrowId = `${idPrefix}-mwArrow`;
       const navArrowId = `${idPrefix}-navArrow`;
@@ -1370,9 +1443,6 @@
     let analyzeSeq = 0;
     let marker = null, coreLine = null, currentLat = null, currentLng = null;
 
-    // ✅ FIX: analyze fetch Abort
-    let analyzeAbort = null;
-
     function findHourlyIndex(hourlyTimes, dateStr, hour){
       if (!Array.isArray(hourlyTimes)) return -1;
       const target = `${dateStr}T${pad2(hour)}:00`;
@@ -1380,11 +1450,6 @@
     }
 
     async function analyzeData(lat, lng, spotName=null){
-      // ✅ 이전 분석 요청 취소
-      if(analyzeAbort) analyzeAbort.abort();
-      analyzeAbort = new AbortController();
-      const { signal } = analyzeAbort;
-
       const mySeq = ++analyzeSeq;
       currentLat = lat; currentLng = lng;
 
@@ -1395,27 +1460,31 @@
       marker.bindPopup("데이터 분석 중... 📡").openPopup();
 
       const dateStr = document.getElementById('obs-date').value;
-      const baseDate = parseLocalYMD(dateStr);
-
       const selectedHour = parseInt(document.getElementById('obs-time').value, 10);
-      const selectedDate = new Date(baseDate);
+      const selectedDate = new Date(dateStr);
       selectedDate.setHours(selectedHour, 0, 0, 0);
 
-      const timelineStart = new Date(baseDate);
+      const timelineStart = new Date(dateStr);
       timelineStart.setHours(18,0,0,0);
 
-      // --- weather hourly for the day
       const withinWeather = isWithinWeatherWindow(dateStr);
       let weatherHourly = null;
       let isWeatherAvailable = false;
       let weatherWarningHtml = "";
+      let elevationM = null;
 
       if(withinWeather){
         try{
-          const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&hourly=cloudcover,cloudcover_low,cloudcover_mid,cloudcover_high,temperature_2m,dewpoint_2m,windspeed_10m&wind_speed_unit=ms&timezone=auto&start_date=${dateStr}&end_date=${dateStr}`;
-          const response = await fetch(weatherUrl, { signal });
+          const weatherUrl =
+            `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +
+            `&hourly=cloudcover,cloudcover_low,cloudcover_mid,cloudcover_high,temperature_2m,dewpoint_2m,windspeed_10m` +
+            `&wind_speed_unit=ms&timezone=auto&start_date=${dateStr}&end_date=${dateStr}`;
+
+          const response = await fetch(weatherUrl);
           if(response.ok){
             const weatherData = await response.json();
+            elevationM = (typeof weatherData.elevation === "number") ? weatherData.elevation : null;
+
             if(weatherData.hourly && weatherData.hourly.time && weatherData.hourly.cloudcover){
               weatherHourly = weatherData.hourly;
               isWeatherAvailable = true;
@@ -1425,22 +1494,30 @@
                 const temp = weatherHourly.temperature_2m[idx];
                 const dew  = weatherHourly.dewpoint_2m[idx];
                 const wind = weatherHourly.windspeed_10m[idx];
+
+                // 강풍 리스크(고도 반영)
+                const wPen = windPenalty(wind, elevationM);
+                const wText =
+                  (wPen < 4) ? '<span class="safe-text">✅ 안정</span>' :
+                  (wPen < 12) ? '<span class="warning-text">⚠️ 흔들림 주의</span>' :
+                  '<span class="warning-text">🛑 강풍 리스크</span>';
+
+                const elevTxt = (elevationM==null) ? "?" : Math.round(elevationM);
+
                 weatherWarningHtml = `
                   <div class="card" style="margin-top:8px;">
-                    <div class="tiny">날씨 경고</div>
+                    <div class="tiny">날씨 & 리스크</div>
                     <div style="font-size:12px; margin-top:4px;">
+                      <b>⛰️ 해발:</b> ${elevTxt}m<br>
                       <b>🌡️ 기온/이슬점:</b> ${temp}°C / ${dew}°C &nbsp;👉 ${(temp - dew) <= 2 ? '<span class="warning-text">💧 결로 주의</span>' : '<span class="safe-text">✅ 안전</span>'}<br>
-                      <div style="margin-top:2px;"><b>💨 풍속:</b> ${wind}m/s &nbsp;👉 ${wind >= 5 ? '<span class="warning-text">⚠️ 강풍 주의</span>' : '<span class="safe-text">✅ 안전</span>'}</div>
+                      <div style="margin-top:2px;"><b>💨 풍속(10m):</b> ${wind}m/s &nbsp;👉 ${wText}</div>
                     </div>
                   </div>
                 `;
               }
             }
           }
-        } catch(e){
-          if(e && e.name === "AbortError") return;
-          console.log("기상 데이터 로드 실패", e);
-        }
+        } catch(e){ console.log("기상 데이터 로드 실패", e); }
       }
 
       function getCloudEvalForDate(d){
@@ -1455,7 +1532,7 @@
         return { eval: evaluateCloudImpact(cLow, cMid, cHigh, cTotal), cTotal, cLow, cMid, cHigh };
       }
 
-      // --- timeline bar
+      // timeline bar
       let timelineBarHtml = '<div style="display:flex; width:100%; height:16px; border-radius:6px; overflow:hidden; margin:8px 0; border: 1px solid #555;">';
       let timelineLabelHtml = '<div style="display:flex; justify-content:space-between; color:#888; font-size:10px; padding:0 2px;">';
 
@@ -1477,33 +1554,13 @@
       }
       timelineLabelHtml += '</div>';
 
-      // --- core/gold windows + best visibility time/window
-      const simStartTime = new Date(baseDate); simStartTime.setHours(12,0,0,0);
-      const simEndTime = new Date(simStartTime.getTime() + 24*60*60*1000);
-      let coreStart=null, coreEnd=null;
-      let goldStart=null, goldEnd=null;
+      // best visibility scan
+      const scanStart = new Date(dateStr); scanStart.setHours(18,0,0,0);
+      const scanEnd = new Date(scanStart.getTime() + 12*60*60*1000);
 
       let bestVTime = null;
       let bestVScore = -1;
       let bestWindowStart = null, bestWindowEnd = null;
-
-      for(let t=simStartTime.getTime(); t<simEndTime.getTime(); t += 10*60000){
-        const tempD = new Date(t);
-        const gc = getGalacticCorePosition(tempD, lat, lng);
-        const moonEval = evaluateMoonImpact(tempD, lat, lng, gc.azimuth);
-
-        if (gc.altitude > 0){
-          if(!coreStart) coreStart = new Date(t);
-          coreEnd = new Date(t);
-        }
-        if (gc.altitude >= 15 && moonEval.isSafe){
-          if(!goldStart) goldStart = new Date(t);
-          goldEnd = new Date(t);
-        }
-      }
-
-      const scanStart = new Date(baseDate); scanStart.setHours(18,0,0,0);
-      const scanEnd = new Date(scanStart.getTime() + 12*60*60*1000);
 
       for(let t=scanStart.getTime(); t<=scanEnd.getTime(); t += 20*60000){
         const d = new Date(t);
@@ -1548,16 +1605,15 @@
       }
 
       const fmtTime = (d)=> d ? `${pad2(d.getHours())}:${pad2(d.getMinutes())}` : null;
-      const coreWinText = coreStart ? `${fmtTime(coreStart)} ~ ${fmtTime(coreEnd)}` : "시즌 아님";
-      const goldWinText = goldStart ? `${fmtTime(goldStart)} ~ ${fmtTime(goldEnd)}` : "조건 미달";
 
-      // --- selected time status
+      // selected time status
       const gcPos = getGalacticCorePosition(selectedDate, lat, lng);
       const moonEvalCurrent = evaluateMoonImpact(selectedDate, lat, lng, gcPos.azimuth);
       const lpEval = evaluateDirectionalLightPollution(lat, lng, gcPos.azimuth);
 
       let cloudEvalCurrent = null;
       let cTotal=0, cLow=0, cMid=0, cHigh=0;
+      let windNow = null;
       if(isWeatherAvailable && weatherHourly){
         const idx = findHourlyIndex(weatherHourly.time, dateStr, selectedHour);
         if(idx >= 0){
@@ -1565,6 +1621,7 @@
           cLow   = weatherHourly.cloudcover_low[idx];
           cMid   = weatherHourly.cloudcover_mid[idx];
           cHigh  = weatherHourly.cloudcover_high[idx];
+          windNow = (weatherHourly.windspeed_10m ? weatherHourly.windspeed_10m[idx] : null);
           cloudEvalCurrent = evaluateCloudImpact(cLow, cMid, cHigh, cTotal);
         }
       }
@@ -1614,6 +1671,16 @@
       const rMoon = `<span><span style="font-size:16px; vertical-align:middle; margin-right:4px;">${moonEvalCurrent.moonEmoji}</span><b style="color:${moonEvalCurrent.statusColor}">${moonEvalCurrent.statusText}</b></span>`;
       const rCore = isCoreSafe ? `<span style="color:#0df">고도 ${Math.round(gcPos.altitude)}°</span>` : `<span style="color:#f55">고도 ${Math.round(gcPos.altitude)}° (낮음)</span>`;
       const rLP   = `<span><b style="color:${lpEval.statusColor}">${lpEval.statusText}</b></span>`;
+
+      const elevTxt = (elevationM==null) ? "?" : Math.round(elevationM);
+      const windTxt = (windNow==null) ? "?" : windNow;
+      const wPen = (windNow==null) ? 0 : windPenalty(windNow, elevationM);
+      const wLabel =
+        (windNow==null) ? `<span style="color:#aaa">데이터 없음</span>` :
+        (wPen < 4) ? `<span style="color:#55ff55">✅ 안정</span>` :
+        (wPen < 12) ? `<span style="color:#fd0">⚠️ 흔들림 주의</span>` :
+        `<span style="color:#ff5555">🛑 강풍 리스크</span>`;
+
       const titleHtml = spotName ? `<b>📍 ${escapeHtml(spotName)}</b><br>` : `<b>📍 관측 후보지</b> (${lat.toFixed(3)}, ${lng.toFixed(3)})<br>`;
       const safeSpotName = spotName ? spotName.replace(/'/g, "\\'") : '';
 
@@ -1633,6 +1700,9 @@
             <div style="font-weight:1000; color:${vLabel.col};">${visibilityScore}/100</div>
           </div>
           <div style="margin-top:4px; color:${vLabel.col}; font-weight:1000;">${vLabel.txt}</div>
+          <div class="tiny" style="margin-top:6px; color:#888;">
+            ⛰️ 해발 ${elevTxt}m · 💨 풍속 ${windTxt}m/s (${escapeHtml(wLabel.replace(/<[^>]*>/g,""))})
+          </div>
         </div>
       `;
 
@@ -1665,10 +1735,11 @@
 
           <div class="gonogo-box" style="background:${goBg}; border:1px solid ${goBorder}; margin-top:8px;">
             <div class="gonogo-title" style="color:${goBorder}">${goTitle}</div>
-            <div class="gonogo-item"><span>🌙 <b>달 모양:</b></span> ${rMoon}</div>
+            <div class="gonogo-item"><span>🌙 <b>달:</b></span> ${rMoon}</div>
             <div class="gonogo-item"><span>☁️ <b>구름:</b></span> ${rCloud}</div>
-            <div class="gonogo-item"><span>🌌 <b>코어 고도:</b></span> ${rCore}</div>
-            <div class="gonogo-item"><span>💡 <b>광해방향:</b></span> ${rLP}</div>
+            <div class="gonogo-item"><span>🌌 <b>코어:</b></span> ${rCore}</div>
+            <div class="gonogo-item"><span>💡 <b>광해:</b></span> ${rLP}</div>
+            <div class="gonogo-item"><span>💨 <b>강풍:</b></span> ${wLabel}</div>
           </div>
 
           ${(isWeatherAvailable && weatherWarningHtml) ? weatherWarningHtml : ''}
@@ -1705,9 +1776,7 @@
       if(popupNode) {
         const detailsElements = popupNode.querySelectorAll('details');
         detailsElements.forEach(d => {
-          d.addEventListener('toggle', () => {
-            marker.getPopup().update();
-          });
+          d.addEventListener('toggle', () => { marker.getPopup().update(); });
         });
       }
 
@@ -1783,9 +1852,101 @@
     calculateBestDate();
 
     // =========================
-    // Candidate spots simulation
+    // ✅ Weather fetch pack (hourly + elevation)
     // =========================
-    const candidateSpots = [
+    async function fetchWeatherPack(lat, lng, dateStr){
+      const url =
+        `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +
+        `&hourly=cloudcover,cloudcover_low,cloudcover_mid,cloudcover_high,windspeed_10m` +
+        `&wind_speed_unit=ms&timezone=auto&start_date=${dateStr}&end_date=${dateStr}`;
+      const res = await fetch(url);
+      if(!res.ok) return null;
+      const data = await res.json();
+      if(!data.hourly || !data.hourly.time) return null;
+      const elev = (typeof data.elevation === "number") ? data.elevation : null;
+      return { hourly: data.hourly, elevation: elev };
+    }
+
+    // =========================
+    // ✅ Spot scoring (Visibility + Elevation + Wind + Distance)
+    // =========================
+    function computeSpotScoreAtHour(spot, dateStr, hour, weatherPack, baseLoc){
+      const { lat, lng } = spot;
+      const isGrid = !!spot.isGrid;
+
+      const hourly = weatherPack ? weatherPack.hourly : null;
+      const elevM = weatherPack ? weatherPack.elevation : null;
+
+      const idx = hourly ? findHourlyIndex(hourly.time, dateStr, hour) : -1;
+
+      let cTotal=0, cLow=0, cMid=0, cHigh=0;
+      let windMs = null;
+      let cloudEval = null;
+
+      if(idx >= 0){
+        cTotal = hourly.cloudcover[idx];
+        cLow   = hourly.cloudcover_low[idx];
+        cMid   = hourly.cloudcover_mid[idx];
+        cHigh  = hourly.cloudcover_high[idx];
+        windMs = (hourly.windspeed_10m ? hourly.windspeed_10m[idx] : null);
+        cloudEval = evaluateCloudImpact(cLow, cMid, cHigh, cTotal);
+      }
+
+      const d = new Date(dateStr); d.setHours(hour,0,0,0);
+      const gcPos = getGalacticCorePosition(d, lat, lng);
+      const moonEval = evaluateMoonImpact(d, lat, lng, gcPos.azimuth);
+      const lpEval = evaluateDirectionalLightPollution(lat, lng, gcPos.azimuth);
+
+      const vis = calcVisibilityScore({
+        coreAltDeg: gcPos.altitude,
+        moonEval,
+        cloudEval,
+        lpEval
+      });
+
+      // 기본 패널티(날씨/달/광해/고도 낮음)
+      let penalty = 0;
+      if(idx >= 0){
+        penalty += cHigh * 0.35;
+        penalty += cTotal * 0.05;
+      } else {
+        penalty += 8;
+      }
+      if(!moonEval.isSafe) penalty += (moonEval.timelineColor === "#f00") ? 35 : 18;
+      if(!lpEval.isSafe) penalty += (lpEval.statusColor === "#f55") ? 22 : 10;
+      if(gcPos.altitude <= 0) penalty += 35;
+
+      // ✅ 고도 보너스 + 그리드 접근성 리스크
+      const elevBonus = elevationBonus(elevM);
+      const elevPenalty = elevationPenaltyForAccess(elevM, isGrid);
+
+      // ✅ 강풍 리스크(고도 반영)
+      const wPen = windPenalty(windMs, elevM);
+
+      // ✅ 이동거리(현실성) 페널티
+      let distKm = null;
+      let dPen = 0;
+      if(baseLoc && typeof baseLoc.lat==="number" && typeof baseLoc.lng==="number"){
+        distKm = haversineKm(baseLoc.lat, baseLoc.lng, lat, lng);
+        dPen = distancePenaltyKm(distKm);
+      }
+
+      const score = Math.round(clamp(vis - penalty + elevBonus - elevPenalty - wPen - dPen, 0, 100));
+
+      return {
+        score,
+        hour,
+        elevation: elevM,
+        windMs,
+        distKm,
+        detail: { vis, penalty, elevBonus, elevPenalty, wPen, dPen, cTotal, cHigh, alt: gcPos.altitude }
+      };
+    }
+
+    // =========================
+    // ✅ 후보지: 고정 + Grid(대한민국 범위 내) + "육지 추정" 필터
+    // =========================
+    const fixedSpots = [
       { name: "연천 당포성 (경기 북부)", lat: 38.013, lng: 126.949 },
       { name: "파주 감악산 부근 (경기 북부)", lat: 37.942, lng: 126.960 },
       { name: "양평 벗고개 (경기 동부)", lat: 37.534, lng: 127.387 },
@@ -1796,12 +1957,100 @@
       { name: "부여 사랑나무 (충남)", lat: 36.257, lng: 126.903 }
     ];
 
+    function generateKoreaGrid(stepDeg=0.55){
+      // 대략적인 남한+근접 내륙 범위
+      const minLat=34.6, maxLat=38.6;
+      const minLng=126.0, maxLng=129.8;
+
+      const pts = [];
+      let idx=0;
+      for(let lat=minLat; lat<=maxLat; lat+=stepDeg){
+        for(let lng=minLng; lng<=maxLng; lng+=stepDeg){
+          pts.push({
+            name: `GRID-${++idx}`,
+            lat: +(lat.toFixed(4)),
+            lng: +(lng.toFixed(4)),
+            isGrid:true
+          });
+        }
+      }
+      return pts;
+    }
+
+    // =========================
+    // ✅ Rank UI
+    // =========================
+    function renderRankResults(results, baseLoc){
+      const box = document.getElementById('rank-box');
+      if(!results || results.length===0){
+        box.style.display='none';
+        box.innerHTML='';
+        return;
+      }
+
+      const locTxt = (baseLoc && isFinite(baseLoc.lat) && isFinite(baseLoc.lng))
+        ? `내 위치 기준 거리 페널티 적용중 (${baseLoc.lat.toFixed(3)}, ${baseLoc.lng.toFixed(3)})`
+        : `내 위치를 모르면 거리 페널티는 0 (📍 버튼으로 내 위치 저장 추천)`;
+
+      box.style.display='block';
+      box.innerHTML = `
+        <div style="font-weight:1000; color:#fff; margin-bottom:6px;">🏆 TOP 후보 (현실성 포함)</div>
+        <div class="tiny" style="color:#888; margin-bottom:8px;">${escapeHtml(locTxt)}</div>
+        ${results.slice(0,8).map((it, i) => {
+          const elev = (it.elevation==null) ? "?" : Math.round(it.elevation);
+          const wind = (it.windMs==null) ? "?" : it.windMs.toFixed(1);
+          const dist = (it.distKm==null) ? "?" : Math.round(it.distKm);
+          const badge =
+            (i===0) ? `<span class="chip" style="border-color:rgba(0,255,100,0.35); color:#9f9;">BEST</span>` :
+            `<span class="chip" style="opacity:0.8;">#${i+1}</span>`;
+          return `
+            <div class="card" style="margin-top:8px; cursor:pointer;" data-lat="${it.lat}" data-lng="${it.lng}" data-name="${escapeHtml(it.name)}">
+              <div class="row-between">
+                <div style="font-weight:1000;">${badge} ${escapeHtml(it.name)}</div>
+                <div style="font-weight:1000; color:#0df;">${it.bestScore}/100</div>
+              </div>
+              <div style="margin-top:6px; font-size:11px; color:#aaa; line-height:1.4;">
+                ⏰ 추천 <b style="color:#fd0;">${pad2(it.bestHour)}:00</b>
+                · ⛰️ ${elev}m
+                · 💨 ${wind}m/s
+                · 🚗 ${dist}km
+              </div>
+            </div>
+          `;
+        }).join('')}
+        <div class="tiny" style="margin-top:10px; color:#777;">
+          ※ 바다 한가운데 튀는 현상은 <b>elevation(해발)</b>로 “육지 추정 필터”를 걸어 강하게 억제합니다.
+        </div>
+      `;
+
+      box.onclick = (e) => {
+        const card = e.target.closest('.card[data-lat]');
+        if(!card) return;
+        const lat = parseFloat(card.dataset.lat);
+        const lng = parseFloat(card.dataset.lng);
+        const name = card.dataset.name || "선택한 후보";
+        map.setView([lat,lng], 11);
+        analyzeData(lat,lng,name);
+        if(window.innerWidth <= 768) document.getElementById('ui-panel').classList.add('collapsed');
+      };
+    }
+
+    // =========================
+    // ✅ Candidate simulation (FINAL)
+    // - Open-Meteo: cloud + wind + elevation
+    // - score: visibility + elev bonus - wind penalty - distance penalty
+    // - land-only: elevation < 3m 제외(그리드/후보)
+    // =========================
     document.getElementById('btn-simulate').addEventListener('click', async function(){
       const btn = this;
       const msg = document.getElementById('simulate-msg');
       const targetDate = document.getElementById('obs-date').value;
       const progContainer = document.getElementById('progress-container');
       const progBar = document.getElementById('progress-bar');
+      const rankBox = document.getElementById('rank-box');
+
+      rankBox.style.display = 'none';
+      rankBox.innerHTML = '';
 
       if(!isWithinWeatherWindow(targetDate)){
         msg.style.display='block'; msg.style.color='#fd0';
@@ -1809,70 +2058,121 @@
         return;
       }
 
+      // ✅ 내 위치가 없으면 한번만 요청(허용하면 현실성 급상승)
+      if(!myLocation && navigator.geolocation){
+        try{
+          await new Promise((resolve) => {
+            navigator.geolocation.getCurrentPosition(
+              pos => { saveMyLoc(pos.coords.latitude, pos.coords.longitude); resolve(); },
+              _ => resolve(),
+              { enableHighAccuracy:false, timeout:5000, maximumAge:600000 }
+            );
+          });
+        }catch(e){}
+      }
+
+      const baseLoc = myLocation || (currentLat!=null ? {lat:currentLat, lng:currentLng} : null);
+
       btn.disabled = true;
       msg.style.display = 'block';
       msg.style.color = '#0df';
-      msg.innerText = "국내 주요 명소를 분석 중입니다.";
+      msg.innerText = "국내 후보 + 그리드(육지 추정) 분석 중입니다.";
       progContainer.style.display = 'block';
       progBar.style.width = '0%';
 
-      let bestScore = -1, bestSpot = null, bestHour = 22;
+      // 후보 구성: 고정 + 그리드
+      const grid = generateKoreaGrid(0.55); // 필요 시 0.45로 더 촘촘하게
+      const candidates = [...fixedSpots, ...grid];
+
+      // 검색 시간대
       const searchHours = [0,1,2,3,4,20,21,22,23];
 
-      try{
-        for(let i=0; i<candidateSpots.length; i++){
-          const spot = candidateSpots[i];
+      // 결과 모음
+      const results = [];
 
-          const percentage = Math.round(((i + 1) / candidateSpots.length) * 100);
+      // 진행률
+      const N = candidates.length;
+      const softDelay = (ms)=>new Promise(r=>setTimeout(r,ms));
+
+      try{
+        for(let i=0; i<N; i++){
+          const spot = candidates[i];
+
+          const percentage = Math.round(((i + 1) / N) * 100);
           btn.innerHTML = `📡 분석 중... (${percentage}%)`;
           progBar.style.width = `${percentage}%`;
-          await new Promise(r => setTimeout(r, 50));
 
-          const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${spot.lat}&longitude=${spot.lng}&hourly=cloudcover,cloudcover_low,cloudcover_mid,cloudcover_high&timezone=auto&start_date=${targetDate}&end_date=${targetDate}`;
-          const response = await fetch(weatherUrl);
-          if(!response.ok) continue;
+          // 브라우저/서버 부담 완화
+          if(i % 8 === 0) await softDelay(40);
 
-          const weatherData = await response.json();
-          if(!weatherData.hourly || !weatherData.hourly.cloudcover || !weatherData.hourly.time) continue;
+          const weatherPack = await fetchWeatherPack(spot.lat, spot.lng, targetDate);
+          if(!weatherPack) continue;
+
+          // ✅ 육지 추정 필터(해발 3m 미만 제외) - 특히 GRID에서 바다 제거
+          if(!isLikelyLand(weatherPack.elevation)){
+            if(spot.isGrid) continue;
+            // 고정 후보는 일단 남겨두되(해안 저지대일 수 있음), 점수에 불리하므로 대부분 하위로 내려감
+          }
+
+          let bestScore = -1;
+          let bestHour = 22;
+          let bestMeta = null;
 
           for(const h of searchHours){
-            const idx = findHourlyIndex(weatherData.hourly.time, targetDate, h);
-            if (idx < 0) continue;
+            const s = computeSpotScoreAtHour(spot, targetDate, h, weatherPack, baseLoc);
+            // 코어가 아예 지평선 아래면 사실상 제외
+            if(s.detail.alt <= 0) continue;
 
-            const cTotal = weatherData.hourly.cloudcover[idx];
-            const cLow   = weatherData.hourly.cloudcover_low[idx];
-            const cMid   = weatherData.hourly.cloudcover_mid[idx];
-            const cHigh  = weatherData.hourly.cloudcover_high[idx];
+            if(s.score > bestScore){
+              bestScore = s.score;
+              bestHour = h;
+              bestMeta = s;
+            }
+          }
 
-            const d = parseLocalYMD(targetDate); d.setHours(h,0,0,0);
-            const gcPos = getGalacticCorePosition(d, spot.lat, spot.lng);
-            const moonEval = evaluateMoonImpact(d, spot.lat, spot.lng, gcPos.azimuth);
-            const cloudEval = evaluateCloudImpact(cLow, cMid, cHigh, cTotal);
-            const lpEval = evaluateDirectionalLightPollution(spot.lat, spot.lng, gcPos.azimuth);
+          if(bestScore > 0 && bestMeta){
+            // GRID는 이름을 더 인간적으로(해발/거리로 보정)
+            const name = spot.isGrid
+              ? `GRID 후보 (⛰️${(bestMeta.elevation==null?'?':Math.round(bestMeta.elevation))}m / 🚗${(bestMeta.distKm==null?'?':Math.round(bestMeta.distKm))}km)`
+              : spot.name;
 
-            let score = 100 - (cTotal * 0.4) - (cLow * 0.2) - (cMid * 0.4) - (cHigh * 1.5) - ((lpEval.bortleClass - 1) * 8);
-
-            if(!moonEval.isSafe) score -= 30;
-            if(moonEval.timelineColor === "#f00") score -= 60;
-            if(!cloudEval.isSafe) score -= 50;
-            if(!lpEval.isSafe) score -= 40;
-            if(gcPos.altitude <= 0) score -= 40;
-
-            if(score > bestScore){ bestScore = score; bestSpot = spot; bestHour = h; }
+            results.push({
+              name,
+              lat: spot.lat,
+              lng: spot.lng,
+              bestHour,
+              bestScore,
+              elevation: bestMeta.elevation,
+              windMs: bestMeta.windMs,
+              distKm: bestMeta.distKm,
+              isGrid: !!spot.isGrid
+            });
           }
         }
 
-        if(bestSpot && bestScore > 0){
-          document.getElementById('obs-time').value = bestHour;
-          document.getElementById('time-text').innerText = `${pad2(bestHour)}:00`;
+        // 정렬 + TOP 표시
+        results.sort((a,b)=> b.bestScore - a.bestScore);
+
+        if(results.length > 0){
+          renderRankResults(results, baseLoc);
+
+          // 1등으로 이동 + 시간도 세팅
+          const best = results[0];
+          document.getElementById('obs-time').value = best.bestHour;
+          document.getElementById('time-text').innerText = `${pad2(best.bestHour)}:00`;
+
           msg.style.color = "#0df";
-          msg.innerText = `✅ [${bestSpot.name}] ${bestHour}시가 가장 최적입니다!`;
-          map.setView([bestSpot.lat, bestSpot.lng], 11);
-          analyzeData(bestSpot.lat, bestSpot.lng, bestSpot.name);
+          msg.innerText =
+            `✅ BEST: [${best.name}] ${best.bestHour}시 (점수 ${best.bestScore}/100)` +
+            (best.distKm!=null ? ` · 거리 ${Math.round(best.distKm)}km` : '');
+
+          map.setView([best.lat, best.lng], 11);
+          analyzeData(best.lat, best.lng, best.name);
+
           if(window.innerWidth <= 768) document.getElementById('ui-panel').classList.add('collapsed');
         } else {
           msg.style.color = "#f55";
-          msg.innerText = "❌ 기상 데이터가 없거나 조건이 맞는 곳이 없습니다.";
+          msg.innerText = "❌ 기상 데이터가 없거나 조건이 맞는 후보가 없습니다.";
         }
       } catch(err){
         msg.style.color = "#f55";
@@ -1881,7 +2181,7 @@
       } finally {
         btn.disabled = false;
         btn.innerHTML = "🚀 선택한 날짜의 최적지 찾기";
-        setTimeout(() => { progContainer.style.display = 'none'; }, 1000);
+        setTimeout(() => { progContainer.style.display = 'none'; }, 900);
       }
     });
 
