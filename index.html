@@ -62,6 +62,7 @@
 
     .time-display-box{ text-align:center; font-size:18px; font-weight:900; color:#0df; margin-bottom:5px; }
 
+    /* ===== Popup UI 개선 (스크롤 및 아코디언 추가) ===== */
     .leaflet-popup-content-wrapper, .leaflet-popup-tip{
       background:rgba(20,20,20,0.95) !important;
       backdrop-filter:blur(10px) !important;
@@ -70,7 +71,56 @@
       box-shadow:0 4px 15px rgba(0,0,0,0.8) !important;
       width:340px;
     }
+    
+    .leaflet-popup-content {
+      /* 너무 길어지면 내부에서 스크롤 되도록 설정 */
+      max-height: 55vh;
+      overflow-y: auto !important;
+      overscroll-behavior: contain;
+      padding-right: 6px !important;
+      margin: 14px 12px 14px 16px !important;
+    }
+    .leaflet-popup-content::-webkit-scrollbar { width: 6px; }
+    .leaflet-popup-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 4px; }
+
     .leaflet-popup-content hr{ border:0; border-top:1px solid rgba(255,255,255,0.15); margin:10px 0; }
+
+    /* 접기/펴기(Accordion) UI */
+    .popup-details {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      margin-top: 8px;
+      overflow: hidden;
+    }
+    .popup-summary {
+      padding: 12px 10px;
+      font-size: 13px;
+      font-weight: 900;
+      color: #fff;
+      cursor: pointer;
+      list-style: none; /* Hide default arrow */
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none; /* 드래그 선택 방지 */
+    }
+    .popup-summary::-webkit-details-marker { display: none; }
+    .popup-summary::after {
+      content: "▼";
+      font-size: 10px;
+      color: #aaa;
+      transition: transform 0.2s;
+    }
+    .popup-details[open] .popup-summary::after {
+      transform: rotate(180deg);
+    }
+    .popup-details-content {
+      padding: 0 10px 12px 10px;
+      border-top: 1px dashed rgba(255, 255, 255, 0.1);
+      margin-top: 2px;
+      padding-top: 10px;
+    }
 
     .opacity-control{ display:flex; align-items:center; gap:10px; margin-top:5px; font-size:12px; }
     .opacity-label{ min-width:85px; }
@@ -108,11 +158,11 @@
     }
     .leaflet-control-locate:hover{ background:#333; }
 
-    .gonogo-box{ padding:10px; border-radius:12px; margin-bottom:12px; text-align:left; font-size:13px; line-height:1.6; }
+    .gonogo-box{ padding:10px; border-radius:12px; margin-bottom:8px; text-align:left; font-size:13px; line-height:1.6; }
     .gonogo-title{ font-size:18px; font-weight:1000; text-align:center; margin-bottom:8px; letter-spacing:0.5px; }
     .gonogo-item{ display:flex; justify-content:space-between; gap:10px; margin-bottom:4px; border-bottom:1px dashed rgba(255,255,255,0.1); padding-bottom:4px; }
     .gonogo-item:last-child{ border-bottom:none; padding-bottom:0; }
-    .mw-window-box{ background:rgba(0,0,0,0.5); border:1px solid #444; padding:12px; border-radius:12px; margin-bottom:12px; }
+    .mw-window-box{ background:rgba(0,0,0,0.5); border:1px solid #444; padding:12px; border-radius:12px; }
     .timeline-legend{ display:flex; gap:6px; font-size:10px; justify-content:center; margin-top:6px; flex-wrap:wrap; }
     .legend-item{ display:flex; align-items:center; gap:4px; color:#ddd; }
     .legend-box{ width:10px; height:10px; border-radius:2px; }
@@ -266,7 +316,6 @@
 
     <div class="ui-section">
       <div class="ui-title">🧭 실시간 나침반(센서)</div>
-
       <div class="toggle">
         <div class="toggle-left">
           <div class="toggle-title">실시간 방향 안내</div>
@@ -274,7 +323,6 @@
         </div>
         <div class="switch" id="switch-compass" role="switch" aria-checked="false" tabindex="0"></div>
       </div>
-
       <div class="card" style="margin-top:10px;">
         <div class="row-between">
           <div class="chip">현재 헤딩</div>
@@ -290,7 +338,6 @@
 
     <div class="ui-section">
       <div class="ui-title">📷 프레이밍 가이드(렌즈 화각)</div>
-
       <div class="card">
         <div class="flex-row">
           <select id="sensor-preset" style="flex:1.4;">
@@ -301,7 +348,6 @@
           </select>
           <input id="focal-mm" type="number" min="1" step="1" value="16" style="flex:1;" />
         </div>
-
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;">
           <div class="card" style="padding:8px;">
             <div class="tiny">수평 화각</div>
@@ -320,7 +366,6 @@
             <div style="font-weight:1000; color:#fd0;" id="fov-eq">--mm</div>
           </div>
         </div>
-
         <div class="muted" style="margin-top:10px;">
           팁: <b>은하수 아치</b>는 보통 “대각 100°급”이 유리(FF 14~16mm 느낌). 코어만 강하게 뽑으면 24~35mm 쪽도 좋아요.
         </div>
@@ -413,7 +458,6 @@
     function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
     function norm360(d){ d = d % 360; if(d < 0) d += 360; return d; }
     function signedDeltaDeg(targetDeg, currentDeg){
-      // return [-180, 180]
       let d = norm360(targetDeg) - norm360(currentDeg);
       if(d > 180) d -= 360;
       if(d < -180) d += 360;
@@ -536,7 +580,7 @@
       const handle = document.getElementById('mobile-toggle');
 
       const PEEK = 54;
-      const OPEN_THRESHOLD_RATIO = 0.75; // 25% 올리면 오픈
+      const OPEN_THRESHOLD_RATIO = 0.75; 
       const CLOSE_THRESHOLD_RATIO = 0.18;
       const TOP_DRAG_ZONE = 90;
       const TAP_MOVE_PX = 10;
@@ -914,7 +958,6 @@
     };
 
     function fovDeg(sensorSizeMm, focalMm){
-      // 2 * atan(size / (2*f))
       const rad = 2 * Math.atan(sensorSizeMm / (2 * focalMm));
       return rad * 180 / Math.PI;
     }
@@ -957,7 +1000,7 @@
       const fd = fovDeg(diag, f);
       const eq = (f * s.crop);
       return `
-        <div class="card" style="margin-top:10px;">
+        <div class="card" style="margin-top:0;">
           <div class="row-between">
             <div style="font-weight:1000;">📷 프레이밍 (${escapeHtml(s.name)} / ${f}mm)</div>
             <div class="tiny">FF eq ${eq.toFixed(1)}mm</div>
@@ -990,8 +1033,6 @@
 
     // =========================
     // Compass sensor (real-time heading)
-    // - Toggle ON/OFF
-    // - iOS requires permission request on user gesture
     // =========================
     const switchCompass = document.getElementById('switch-compass');
     const headingText = document.getElementById('heading-text');
@@ -999,9 +1040,9 @@
     const compassStatus = document.getElementById('compass-status');
 
     let compassEnabled = false;
-    let lastHeadingDeg = null;     // 0..360, 0=North
-    let lastMWAzDeg = null;        // current computed milky way az
-    let orientationHandler = null; // reference for remove
+    let lastHeadingDeg = null;
+    let lastMWAzDeg = null;
+    let orientationHandler = null;
 
     function updateCompassPanelUI(){
       switchCompass.classList.toggle('on', compassEnabled);
@@ -1011,7 +1052,7 @@
       if(lastHeadingDeg == null || lastMWAzDeg == null){
         turnText.textContent = "--";
       } else {
-        const d = signedDeltaDeg(lastMWAzDeg, lastHeadingDeg); // + right, - left
+        const d = signedDeltaDeg(lastMWAzDeg, lastHeadingDeg); 
         const abs = Math.round(Math.abs(d));
         if(abs < 5) turnText.textContent = "정면 ✅";
         else turnText.textContent = (d > 0) ? `오른쪽 ${abs}°` : `왼쪽 ${abs}°`;
@@ -1029,41 +1070,28 @@
     }
 
     function getScreenOrientationAngle(){
-      // 0, 90, 180, 270
       const so = screen.orientation && typeof screen.orientation.angle === 'number' ? screen.orientation.angle : null;
       if(so != null) return so;
-      // fallback
       const w = window.orientation;
       if(typeof w === 'number') return w;
       return 0;
     }
 
     function headingFromDeviceOrientationEvent(e){
-      // Prefer iOS webkitCompassHeading if exists
       if(typeof e.webkitCompassHeading === 'number') {
-        // already 0=N
         return norm360(e.webkitCompassHeading);
       }
-
-      // Generic: use alpha (0..360, 0=North?) depends; use "360 - alpha" approach
-      // Then adjust by screen orientation.
       if(typeof e.alpha !== 'number') return null;
-
-      const alpha = e.alpha; // 0..360
+      const alpha = e.alpha; 
       let heading = 360 - alpha;
-
       const screenAngle = getScreenOrientationAngle();
       heading = heading + screenAngle;
-
       return norm360(heading);
     }
 
     async function enableCompass(){
-      // Only meaningful on devices with sensors; on PC it will likely stay unavailable.
       compassEnabled = true;
       lastHeadingDeg = null;
-
-      // iOS permission gate
       try{
         if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
           const res = await DeviceOrientationEvent.requestPermission();
@@ -1083,24 +1111,18 @@
         return;
       }
 
-      // Start listener
       orientationHandler = (e) => {
         const h = headingFromDeviceOrientationEvent(e);
         if(h == null) return;
-
-        // Light smoothing (avoid jitter)
         if(lastHeadingDeg == null){
           lastHeadingDeg = h;
         } else {
           const d = signedDeltaDeg(h, lastHeadingDeg);
           lastHeadingDeg = norm360(lastHeadingDeg + d * 0.25);
         }
-
         updateCompassPanelUI();
-        // Update popup nav arrow if open
         updatePopupNavIfAny();
       };
-
       window.addEventListener('deviceorientation', orientationHandler, true);
       updateCompassPanelUI();
     }
@@ -1237,6 +1259,7 @@
       let score = altScore - penalty;
       return Math.round(clamp(score, 0, 100));
     }
+
     function scoreToLabel(score){
       if(score >= 85) return { txt:"S급 선명 (추천)", col:"#0f0" };
       if(score >= 70) return { txt:"A급 (괜찮음)", col:"#0df" };
@@ -1245,22 +1268,13 @@
       return { txt:"D급 (비추)", col:"#f55" };
     }
 
-    // =========================
-    // Popup compass SVG (정중앙 회전)
-    // - arrow rotates around center (cx=32, cy=32)
-    // - We keep two arrows:
-    //    1) MW absolute direction arrow (purple)
-    //    2) NAV arrow (cyan) = where to turn based on sensor heading (if enabled)
-    // =========================
     function buildCompassSvgHtml(idPrefix, mwAzDeg){
-      // IDs must be unique per popup
       const mwArrowId = `${idPrefix}-mwArrow`;
       const navArrowId = `${idPrefix}-navArrow`;
       const navTextId = `${idPrefix}-navText`;
 
-      // Initial nav arrow points up; we'll rotate later by JS if sensor is ON.
       return `
-        <div class="card" style="margin-top:10px;">
+        <div class="card" style="margin-top:0;">
           <div class="row" style="align-items:flex-start;">
             <div style="flex:0 0 76px;">
               <svg width="76" height="76" viewBox="0 0 64 64" aria-label="나침반" style="display:block;">
@@ -1273,45 +1287,34 @@
                     </feMerge>
                   </filter>
                 </defs>
-
                 <circle cx="32" cy="32" r="30" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
-
                 <text x="32" y="12" text-anchor="middle" font-size="9" fill="#bbb" font-weight="800">N</text>
                 <text x="54" y="35" text-anchor="middle" font-size="9" fill="#bbb" font-weight="800">E</text>
                 <text x="32" y="58" text-anchor="middle" font-size="9" fill="#bbb" font-weight="800">S</text>
                 <text x="10" y="35" text-anchor="middle" font-size="9" fill="#bbb" font-weight="800">W</text>
-
-                <!-- MW arrow (absolute azimuth) -->
                 <g id="${mwArrowId}" transform="rotate(${mwAzDeg} 32 32)" filter="url(#${idPrefix}-glow)">
                   <path d="M32 10 L38 30 L32 26 L26 30 Z" fill="#ff00ff"/>
                   <circle cx="32" cy="32" r="2.4" fill="#ff00ff"/>
                 </g>
-
-                <!-- NAV arrow (relative turn) -->
                 <g id="${navArrowId}" transform="rotate(0 32 32)" filter="url(#${idPrefix}-glow)" opacity="0.0">
                   <path d="M32 12 L36 26 L32 23 L28 26 Z" fill="#0df"/>
                   <circle cx="32" cy="32" r="2.2" fill="#0df"/>
                 </g>
               </svg>
             </div>
-
             <div style="flex:1; min-width:0;">
               <div style="font-weight:1000; font-size:14px; color:#fff;">
-                🧭 은하수 방향:
+                🧭 방향:
                 <span style="color:#ff77ff">${azToCompassKR(mwAzDeg)}</span>
                 <span style="color:#aaa; font-weight:700;">(${Math.round(norm360(mwAzDeg))}°)</span>
               </div>
               <div class="muted" style="margin-top:6px;">
-                보라색 화살표/점선 쪽이 <b>코어 방향</b>입니다.
+                보라색 화살표 쪽이 <b>코어 방향</b>입니다.
               </div>
-
               <div class="card" style="padding:8px; margin-top:10px;">
                 <div class="row-between">
                   <div class="tiny">실시간 안내</div>
                   <div class="tiny" id="${navTextId}" style="color:#0df; font-weight:900;">OFF</div>
-                </div>
-                <div class="tiny" style="margin-top:4px; color:#888;">
-                  ON이면 “내 헤딩” 기준으로 좌/우 회전 안내가 떠요.
                 </div>
               </div>
             </div>
@@ -1333,12 +1336,9 @@
         return;
       }
 
-      // NAV arrow shows where to turn (relative)
-      const delta = signedDeltaDeg(mwAzDeg, lastHeadingDeg); // +right, -left
+      const delta = signedDeltaDeg(mwAzDeg, lastHeadingDeg); 
       const abs = Math.round(Math.abs(delta));
       navArrow.setAttribute("opacity", "1.0");
-
-      // rotate nav arrow by delta around center (points where MW is relative to current heading)
       navArrow.setAttribute("transform", `rotate(${delta} 32 32)`);
 
       if(abs < 5){
@@ -1350,7 +1350,6 @@
       }
     }
 
-    // Called whenever sensor updates or popup refreshed
     function updatePopupNavIfAny(){
       if(window.__lastPopupCompassPrefix && lastMWAzDeg != null){
         applyNavToPopup(window.__lastPopupCompassPrefix, lastMWAzDeg);
@@ -1381,7 +1380,6 @@
 
       const dateStr = document.getElementById('obs-date').value;
       const selectedHour = parseInt(document.getElementById('obs-time').value, 10);
-
       const selectedDate = new Date(dateStr);
       selectedDate.setHours(selectedHour, 0, 0, 0);
 
@@ -1410,8 +1408,13 @@
                 const dew  = weatherHourly.dewpoint_2m[idx];
                 const wind = weatherHourly.windspeed_10m[idx];
                 weatherWarningHtml = `
-                  <b>🌡️ 기온/이슬점:</b> ${temp}°C / ${dew}°C &nbsp;👉 ${(temp - dew) <= 2 ? '<span class="warning-text">💧 결로 주의</span>' : '<span class="safe-text">✅ 안전</span>'}<br>
-                  <b>💨 풍속:</b> ${wind}m/s &nbsp;👉 ${wind >= 5 ? '<span class="warning-text">⚠️ 강풍 주의</span>' : '<span class="safe-text">✅ 안전</span>'}<br>
+                  <div class="card" style="margin-top:8px;">
+                    <div class="tiny">날씨 경고</div>
+                    <div style="font-size:12px; margin-top:4px;">
+                      <b>🌡️ 기온/이슬점:</b> ${temp}°C / ${dew}°C &nbsp;👉 ${(temp - dew) <= 2 ? '<span class="warning-text">💧 결로 주의</span>' : '<span class="safe-text">✅ 안전</span>'}<br>
+                      <div style="margin-top:2px;"><b>💨 풍속:</b> ${wind}m/s &nbsp;👉 ${wind >= 5 ? '<span class="warning-text">⚠️ 강풍 주의</span>' : '<span class="safe-text">✅ 안전</span>'}</div>
+                    </div>
+                  </div>
                 `;
               }
             }
@@ -1554,9 +1557,8 @@
       const vLabel = scoreToLabel(visibilityScore);
 
       const az = norm360(gcPos.azimuth);
-      lastMWAzDeg = az; // for sensor guidance (panel + popup)
+      lastMWAzDeg = az; 
 
-      // core direction line
       if (gcPos.altitude > 0){
         const dist = 0.5;
         const endLat = lat + dist * Math.cos(az * Math.PI / 180);
@@ -1566,7 +1568,6 @@
 
       if (mySeq !== analyzeSeq) return;
 
-      // GO/NO-GO
       const isCoreSafe = (gcPos.altitude >= 10);
       let goTitle="", goBg="", goBorder="";
       if(isWeatherAvailable && cloudEvalCurrent){
@@ -1593,11 +1594,10 @@
       const rCore = isCoreSafe ? `<span style="color:#0df">고도 ${Math.round(gcPos.altitude)}°</span>` : `<span style="color:#f55">고도 ${Math.round(gcPos.altitude)}° (낮음)</span>`;
       const rLP   = `<span><b style="color:${lpEval.statusColor}">${lpEval.statusText}</b></span>`;
       const titleHtml = spotName ? `<b>📍 ${escapeHtml(spotName)}</b><br>` : `<b>📍 관측 후보지</b> (${lat.toFixed(3)}, ${lng.toFixed(3)})<br>`;
+      const safeSpotName = spotName ? spotName.replace(/'/g, "\\'") : '';
 
-      // Compass SVG (center-rotation fixed)
       const compassPrefix = `cmp${Date.now()}${Math.floor(Math.random()*1000)}`;
       window.__lastPopupCompassPrefix = compassPrefix;
-
       const compassHtml = buildCompassSvgHtml(compassPrefix, az);
 
       const bestTimeText = bestVTime ? `${fmtTime(bestVTime)} (점수 ${bestVScore}/100)` : "계산 불가";
@@ -1606,18 +1606,31 @@
         : "조건 미달";
 
       const visibilityBox = `
-        <div class="mw-window-box" style="margin-top:10px;">
+        <div class="mw-window-box" style="margin-top:10px; padding:10px;">
           <div class="row-between">
-            <div style="font-size:15px; font-weight:1000; color:#fff;">✨ 은하수 선명도</div>
+            <div style="font-size:14px; font-weight:1000; color:#fff;">✨ 은하수 선명도</div>
             <div style="font-weight:1000; color:${vLabel.col};">${visibilityScore}/100</div>
           </div>
           <div style="margin-top:4px; color:${vLabel.col}; font-weight:1000;">${vLabel.txt}</div>
-          <div style="margin-top:8px; font-size:12px; color:#ddd; line-height:1.45;">
-            <b>추천 베스트 타임:</b> <span style="color:#0df; font-weight:1000;">${bestTimeText}</span><br>
-            <b>추천 시간대(윈도우):</b> <span style="color:#fd0; font-weight:1000;">${bestWindowText}</span>
+        </div>
+      `;
+
+      const timelineContent = `
+        <div class="mw-window-box" style="margin-bottom:0; border:none; background:transparent; padding:0;">
+          <div style="font-weight:1000; color:#fff; text-align:center; margin-bottom:6px;">🌌 Milky Way Window</div>
+          ${timelineBarHtml}
+          ${timelineLabelHtml}
+          <div class="timeline-legend">
+            <div class="legend-item"><div class="legend-box" style="background:#06a;"></div>코어 낮음</div>
+            <div class="legend-item"><div class="legend-box" style="background:#635;"></div>달 씻김</div>
+            <div class="legend-item"><div class="legend-box" style="background:#c60;"></div>저고도달</div>
+            <div class="legend-item"><div class="legend-box" style="background:#f00;"></div>달 겹침</div>
+            <div class="legend-item"><div class="legend-box" style="background:#fd0;"></div><b style="color:#fd0;">유리(고도15°↑)</b></div>
           </div>
-          <div class="muted" style="margin-top:8px;">
-            점수 = 코어 고도 + 달빛 + 구름 + 광해방향을 초보자용으로 합친 값입니다.
+          <hr style="border-top:1px dashed #555; margin:10px 0;">
+          <div style="font-size:12px; color:#ddd; line-height:1.45; text-align:center;">
+            <b>추천 베스트 타임:</b> <span style="color:#0df; font-weight:1000;">${bestTimeText}</span><br>
+            <div style="margin-top:4px;"><b>추천 시간대:</b> <span style="color:#fd0; font-weight:1000;">${bestWindowText}</span></div>
           </div>
         </div>
       `;
@@ -1627,53 +1640,64 @@
           ${titleHtml}
           <span style="color:#aaa; font-size:11px;">기준 시간: ${dateStr} ${pad2(selectedHour)}:00</span><br>
 
-          ${compassHtml}
           ${visibilityBox}
-          ${getFovSummaryHtml()}
 
-          <div class="gonogo-box" style="background:${goBg}; border:1px solid ${goBorder}; margin-top:10px;">
+          <div class="gonogo-box" style="background:${goBg}; border:1px solid ${goBorder}; margin-top:8px;">
             <div class="gonogo-title" style="color:${goBorder}">${goTitle}</div>
-            <div class="gonogo-item"><span>🌙 <b>달:</b></span> ${rMoon}</div>
+            <div class="gonogo-item"><span>🌙 <b>달 모양:</b></span> ${rMoon}</div>
             <div class="gonogo-item"><span>☁️ <b>구름:</b></span> ${rCloud}</div>
             <div class="gonogo-item"><span>🌌 <b>코어 고도:</b></span> ${rCore}</div>
             <div class="gonogo-item"><span>💡 <b>광해방향:</b></span> ${rLP}</div>
           </div>
 
-          <div class="mw-window-box">
-            <div style="font-size:15px; font-weight:1000; color:#fff; text-align:center; margin-bottom:6px;">🌌 Milky Way Window</div>
-            ${timelineBarHtml}
-            ${timelineLabelHtml}
-            <div class="timeline-legend">
-              <div class="legend-item"><div class="legend-box" style="background:#06a;"></div>코어 낮음</div>
-              <div class="legend-item"><div class="legend-box" style="background:#635;"></div>달 씻김</div>
-              <div class="legend-item"><div class="legend-box" style="background:#c60;"></div>저고도달</div>
-              <div class="legend-item"><div class="legend-box" style="background:#f00;"></div>달 겹침</div>
-              <div class="legend-item"><div class="legend-box" style="background:#fd0;"></div><b style="color:#fd0;">유리(고도15°↑)</b></div>
+          ${(isWeatherAvailable && weatherWarningHtml) ? weatherWarningHtml : ''}
+
+          <details class="popup-details">
+            <summary class="popup-summary">🌌 은하수 타임라인 보기</summary>
+            <div class="popup-details-content">
+              ${timelineContent}
             </div>
-            <hr style="border-top:1px dashed #555; margin:10px 0;">
-            <div style="font-size:12.5px; text-align:center;">
-              코어 지평선 위: <span style="color:#0df">${coreWinText}</span><br>
-              <span style="font-size:14px;">⭐ <b>추천(달 영향 적음):</b> <span style="color:#fd0; font-weight:1000;">${goldWinText}</span></span>
+          </details>
+
+          <details class="popup-details">
+            <summary class="popup-summary">🧭 은하수 방향 및 나침반</summary>
+            <div class="popup-details-content">
+              ${compassHtml}
             </div>
-          </div>
+          </details>
+
+          <details class="popup-details">
+            <summary class="popup-summary">📷 프레이밍 가이드 (화각)</summary>
+            <div class="popup-details-content">
+              ${getFovSummaryHtml()}
+            </div>
+          </details>
+
+          <button class="btn-capture" onclick="capturePopup(event, this)">📸 결과 캡처하여 저장하기</button>
+          <button class="btn-favorite" onclick="saveFavorite(event, ${lat}, ${lng}, '${safeSpotName}')">⭐ 이 장소 즐겨찾기에 저장</button>
+        </div>
       `;
-
-      if (isWeatherAvailable && weatherWarningHtml) popupText += `${weatherWarningHtml}`;
-
-      popupText += `
-        <button class="btn-capture" onclick="capturePopup(event, this)">📸 결과 캡처하여 저장하기</button>
-        <button class="btn-favorite" onclick="saveFavorite(event, ${lat}, ${lng}, '${(spotName||"").replace(/'/g, "\\'")}')">⭐ 이 장소 즐겨찾기에 저장</button>
-      </div>`;
 
       marker.bindPopup(popupText).openPopup();
 
-      // Apply sensor-based nav to popup compass immediately
+      // Accordion 열고 닫을 때 팝업 크기 업데이트 처리 (Leaflet 기본 기능 보조)
+      const popupNode = marker.getPopup().getElement();
+      if(popupNode) {
+        const detailsElements = popupNode.querySelectorAll('details');
+        detailsElements.forEach(d => {
+          d.addEventListener('toggle', () => {
+            marker.getPopup().update();
+          });
+        });
+      }
+
       applyNavToPopup(compassPrefix, az);
       updateCompassPanelUI();
     }
 
     window.capturePopup = function(ev, btnElement) {
       if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+
       const popupEl = document.querySelector('.leaflet-popup');
       if (!popupEl) return;
 
@@ -1739,7 +1763,7 @@
     calculateBestDate();
 
     // =========================
-    // Candidate spots simulation (unchanged)
+    // Candidate spots simulation
     // =========================
     const candidateSpots = [
       { name: "연천 당포성 (경기 북부)", lat: 38.013, lng: 126.949 },
