@@ -62,7 +62,7 @@
 
     .time-display-box{ text-align:center; font-size:18px; font-weight:900; color:#0df; margin-bottom:5px; }
 
-    /* ===== Popup UI 개선 (스크롤 및 아코디언 추가) ===== */
+    /* ===== Popup UI (스크롤 및 아코디언) ===== */
     .leaflet-popup-content-wrapper, .leaflet-popup-tip{
       background:rgba(20,20,20,0.95) !important;
       backdrop-filter:blur(10px) !important;
@@ -71,9 +71,7 @@
       box-shadow:0 4px 15px rgba(0,0,0,0.8) !important;
       width:340px;
     }
-    
     .leaflet-popup-content {
-      /* 너무 길어지면 내부에서 스크롤 되도록 설정 */
       max-height: 55vh;
       overflow-y: auto !important;
       overscroll-behavior: contain;
@@ -82,10 +80,9 @@
     }
     .leaflet-popup-content::-webkit-scrollbar { width: 6px; }
     .leaflet-popup-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 4px; }
-
     .leaflet-popup-content hr{ border:0; border-top:1px solid rgba(255,255,255,0.15); margin:10px 0; }
 
-    /* 접기/펴기(Accordion) UI */
+    /* 아코디언 스타일 */
     .popup-details {
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid rgba(255, 255, 255, 0.12);
@@ -99,11 +96,11 @@
       font-weight: 900;
       color: #fff;
       cursor: pointer;
-      list-style: none; /* Hide default arrow */
+      list-style: none;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      user-select: none; /* 드래그 선택 방지 */
+      user-select: none;
     }
     .popup-summary::-webkit-details-marker { display: none; }
     .popup-summary::after {
@@ -124,7 +121,6 @@
 
     .opacity-control{ display:flex; align-items:center; gap:10px; margin-top:5px; font-size:12px; }
     .opacity-label{ min-width:85px; }
-
     .notice-text{ font-size:11px; color:#999; margin-top:8px; line-height:1.45; word-break:keep-all; }
 
     .btn-simulate{
@@ -290,7 +286,6 @@
         <span>광해지도 + 은하수 방향</span>
         <span class="badge" id="help-badge">OPEN</span>
       </button>
-
       <div id="help-body" class="help-body">
         <strong>1) 광해 지도(빛공해)</strong><br>
         <strong>어두울수록 은하수는 선명</strong>하고 <strong>밝을수록 씻겨요</strong>.
@@ -302,9 +297,7 @@
           <div class="lp-chip"><span class="lp-dot" style="background:#f80;"></span>매우 밝음 (비추)</div>
           <div class="lp-chip"><span class="lp-dot" style="background:#f00;"></span>도심급 (거의 불가)</div>
         </div>
-
         <hr class="help-hr">
-
         <strong>2) 은하수 방향</strong><br>
         지도 아무 곳이나 누르면 팝업에 <strong>“은하수 방향(방위각)”</strong>이 나옵니다.<br>
         • <strong>보라색 점선</strong>: 해당 시간 코어 방향<br>
@@ -605,13 +598,11 @@
 
       function lockPanelScroll(lock){
         if(lock){
-          panel.dataset.prevOverflow = panel.style.overflow;
           panel.style.overflow = 'hidden';
           panel.style.webkitOverflowScrolling = 'auto';
           globalLock = true;
         }else{
-          panel.style.overflow = panel.dataset.prevOverflow || '';
-          delete panel.dataset.prevOverflow;
+          panel.style.overflow = '';
           panel.style.webkitOverflowScrolling = 'touch';
           globalLock = false;
         }
@@ -1635,6 +1626,7 @@
         </div>
       `;
 
+      // ✅ 정보 아코디언 형태로 결합
       let popupText = `
         <div style="font-size: 13px; line-height: 1.6; padding-bottom:5px;">
           ${titleHtml}
